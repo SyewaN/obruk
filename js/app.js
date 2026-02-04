@@ -81,19 +81,33 @@ class App {
         const toggleBtn = document.getElementById('sidebarToggle');
         const sidebar = document.querySelector('.sidebar-panel');
         
+        // Başlangıçta sidebar state'ini ayarla
+        const savedState = localStorage.getItem('hydrosense-sidebar-collapsed');
+        const isCollapsed = savedState === 'true';
+        
+        if (isCollapsed) {
+            sidebar.classList.add('collapsed');
+            toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        } else {
+            sidebar.classList.remove('collapsed');
+            toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            // localStorage temizle çünkü başlangıçta açık olması default
+            localStorage.removeItem('hydrosense-sidebar-collapsed');
+        }
+        
         toggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             sidebar.classList.toggle('collapsed');
-            const isCollapsed = sidebar.classList.contains('collapsed');
+            const nowCollapsed = sidebar.classList.contains('collapsed');
             
             // Animasyon için icon'u çevir
-            if (isCollapsed) {
+            if (nowCollapsed) {
                 toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                localStorage.setItem('hydrosense-sidebar-collapsed', 'true');
             } else {
                 toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                localStorage.removeItem('hydrosense-sidebar-collapsed');
             }
-            
-            localStorage.setItem('hydrosense-sidebar-collapsed', isCollapsed);
         });
         
         // Hover effect - collapsed state'te hover'da aç
@@ -110,16 +124,6 @@ class App {
                 sidebar.style.zIndex = '900';
             }
         });
-        
-        // Sidebar başlangıçta açık gelecek
-        const savedState = localStorage.getItem('hydrosense-sidebar-collapsed');
-        if (savedState === 'true') {
-            sidebar.classList.add('collapsed');
-            toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-        } else {
-            sidebar.classList.remove('collapsed');
-            toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
-        }
     }
 
     // ====== RISK FILTERS ======
