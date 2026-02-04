@@ -1,5 +1,4 @@
 # hydrosense-map
-# Su Tuzlanması ve Obruk Risk İzleme Sistemi
 ## Sweden Junior Water Prize - Türkiye DSİ Projesi
 
 ### 🎯 Proje Amacı
