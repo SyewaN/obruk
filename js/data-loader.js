@@ -48,52 +48,22 @@ class DataLoader {
         this.sensors = [
             {
                 id: 'S001',
-                name: 'Çankırı Merkez',
-                lat: 40.6043,
-                lon: 33.6190,
-                tds: 2100,
-                temperature: 12.5,
+                name: 'Konya Merkez',
+                lat: 38.7269,
+                lon: 32.4829,
+                tds: 1800,
+                temperature: 15.3,
                 riskLevel: 'medium',
                 timestamp: new Date().toISOString()
             },
             {
                 id: 'S002',
-                name: 'Saraycık',
-                lat: 40.5500,
-                lon: 33.6800,
-                tds: 3200,
-                temperature: 11.8,
+                name: 'Konya Çumra',
+                lat: 37.9500,
+                lon: 32.7500,
+                tds: 2400,
+                temperature: 14.8,
                 riskLevel: 'high',
-                timestamp: new Date().toISOString()
-            },
-            {
-                id: 'S003',
-                name: 'Keskin',
-                lat: 40.4800,
-                lon: 33.8200,
-                tds: 1200,
-                temperature: 13.2,
-                riskLevel: 'low',
-                timestamp: new Date().toISOString()
-            },
-            {
-                id: 'S004',
-                name: 'Orta Alan',
-                lat: 40.5500,
-                lon: 33.7500,
-                tds: 1800,
-                temperature: 12.0,
-                riskLevel: 'medium',
-                timestamp: new Date().toISOString()
-            },
-            {
-                id: 'S005',
-                name: 'Kuzey Bölge',
-                lat: 40.7200,
-                lon: 33.5500,
-                tds: 2800,
-                temperature: 11.2,
-                riskLevel: 'medium',
                 timestamp: new Date().toISOString()
             }
         ];

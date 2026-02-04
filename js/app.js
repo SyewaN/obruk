@@ -96,8 +96,22 @@ class App {
             localStorage.setItem('hydrosense-sidebar-collapsed', isCollapsed);
         });
         
-        // Sidebar başlangıçta açık gelecek - collapsed state'i sadece kaydedilmişse ve geçerlilik kontrol
-        // localStorage'ı temizlemek için refresh yap
+        // Hover effect - collapsed state'te hover'da aç
+        sidebar.addEventListener('mouseenter', () => {
+            if (sidebar.classList.contains('collapsed')) {
+                sidebar.style.width = '280px';
+                sidebar.style.zIndex = '901';
+            }
+        });
+        
+        sidebar.addEventListener('mouseleave', () => {
+            if (sidebar.classList.contains('collapsed')) {
+                sidebar.style.width = '60px';
+                sidebar.style.zIndex = '900';
+            }
+        });
+        
+        // Sidebar başlangıçta açık gelecek
         const savedState = localStorage.getItem('hydrosense-sidebar-collapsed');
         if (savedState === 'true') {
             sidebar.classList.add('collapsed');
