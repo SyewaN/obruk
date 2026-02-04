@@ -8,131 +8,218 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     
-    <!-- Chart.js CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.css" />
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
-    <header class="header">
-        <div class="container">
-            <h1>🌊 Yeraltı Suyu İzleme Sistemi</h1>
-            <p class="subtitle">Tuzlanma ve Obruk Risk Analizi</p>
+<body class="theme-dark">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-section">
+                <h1 class="app-title">🌊 HydroSense Monitor</h1>
+                <p class="app-subtitle">Yeraltı Suyu Tuzlanması & Obruk Risk Analizi</p>
+            </div>
+            <div class="header-controls">
+                <button id="themeToggle" class="theme-toggle-btn" title="Tema Değiştir">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="sidebarToggle" class="sidebar-toggle-btn" title="Kontrol Panelini Aç/Kapat">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
         </div>
     </header>
 
-    <main class="main-container">
-        <!-- Sol Panel: Kontroller -->
-        <aside class="sidebar">
-            <section class="control-panel">
-                <h2>Kontroller</h2>
-                
-                <div class="control-group">
-                    <label for="timeSlider">Zaman Seçimi</label>
-                    <input type="range" id="timeSlider" min="0" max="100" value="100" class="slider">
-                    <span id="timeDisplay">Son Veri</span>
-                </div>
+    <main class="app-container">
+        <!-- Collapsible Sidebar Panel -->
+        <aside class="control-sidebar" id="controlSidebar">
+            <div class="sidebar-header">
+                <h2>Kontrol Paneli</h2>
+                <button class="close-sidebar-btn" id="closeSidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
 
-                <div class="control-group">
-                    <label>Risk Seviyesi Filtresi</label>
-                    <div class="filter-buttons">
-                        <button class="risk-btn risk-low active" data-risk="low">Düşük</button>
-                        <button class="risk-btn risk-medium active" data-risk="medium">Orta</button>
-                        <button class="risk-btn risk-high active" data-risk="high">Yüksek</button>
+            <div class="sidebar-content">
+                <!-- Display Toggle Buttons -->
+                <div class="display-controls">
+                    <h3>Görünüm Seçenekleri</h3>
+                    <div class="control-buttons">
+                        <button class="display-btn active" data-view="map" title="Haritayı Göster">
+                            <i class="fas fa-map"></i> Harita
+                        </button>
+                        <button class="display-btn active" data-view="stats" title="İstatistikleri Göster">
+                            <i class="fas fa-chart-bar"></i> İstatistikler
+                        </button>
+                        <button class="display-btn active" data-view="table" title="Tabloyu Göster">
+                            <i class="fas fa-table"></i> Tablo
+                        </button>
                     </div>
                 </div>
 
-                <div class="control-group">
-                    <label for="sensorSelect">Sensör Seç</label>
-                    <select id="sensorSelect">
+                <!-- Filters -->
+                <div class="filter-section">
+                    <h3>Risk Filtresi</h3>
+                    <div class="risk-filters">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" data-risk="low" checked>
+                            <span class="risk-indicator low"></span>
+                            <span>Düşük Risk</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" data-risk="medium" checked>
+                            <span class="risk-indicator medium"></span>
+                            <span>Orta Risk</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" data-risk="high" checked>
+                            <span class="risk-indicator high"></span>
+                            <span>Yüksek Risk</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Time Slider -->
+                <div class="slider-section">
+                    <h3>Zaman Seçimi</h3>
+                    <input type="range" id="timeSlider" min="0" max="100" value="100" class="time-slider">
+                    <span id="timeDisplay" class="time-display">Son Veri</span>
+                </div>
+
+                <!-- Sensor Selection -->
+                <div class="sensor-section">
+                    <h3>Sensör Seçimi</h3>
+                    <select id="sensorSelect" class="sensor-select">
                         <option value="">Tümü</option>
                     </select>
                 </div>
 
-                <div class="stat-box">
-                    <h3>İstatistikler</h3>
-                    <div class="stat-item">
-                        <span class="stat-label">Aktif Sensör:</span>
-                        <span class="stat-value" id="activeSensors">0</span>
+                <!-- Statistics -->
+                <div class="stats-section">
+                    <h3>Özet İstatistikler</h3>
+                    <div class="stat-card">
+                        <div class="stat-label">Aktif Sensör</div>
+                        <div class="stat-value" id="activeSensors">0</div>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Ort. Tuzluluk:</span>
-                        <span class="stat-value" id="avgSalinity">-</span>
+                    <div class="stat-card">
+                        <div class="stat-label">Ort. TDS</div>
+                        <div class="stat-value" id="avgSalinity">-</div>
+                        <div class="stat-unit">ppm</div>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Max Risk:</span>
-                        <span class="stat-value" id="maxRisk">-</span>
-                    </div>
-                </div>
-
-                <div class="legend">
-                    <h3>Risk Efsanesi</h3>
-                    <div class="legend-item">
-                        <span class="legend-color low"></span>
-                        <span>Düşük Risk (TDS < 1500 ppm)</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color medium"></span>
-                        <span>Orta Risk (TDS 1500-3000 ppm)</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color high"></span>
-                        <span>Yüksek Risk (TDS > 3000 ppm)</span>
+                    <div class="stat-card">
+                        <div class="stat-label">Maksimum Risk</div>
+                        <div class="stat-value" id="maxRisk">-</div>
                     </div>
                 </div>
 
-                <div class="info-box">
-                    <h3>ℹ️ Bilgi</h3>
-                    <p><strong>Bu sistem:</strong> Çevresel karar destek prototipidir. Kesin tahmin sunmaz, eğilim ve risk göstergesi sağlar.</p>
-                    <p><strong>Veri kaynağı:</strong> IoT sensörlerinden simüle edilmiş veriler.</p>
+                <!-- Legend -->
+                <div class="legend-section">
+                    <h3>Risk Tanımı</h3>
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <span class="legend-color low"></span>
+                            <div class="legend-text">
+                                <strong>Düşük</strong>
+                                <span class="legend-range">TDS &lt; 1500 ppm</span>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color medium"></span>
+                            <div class="legend-text">
+                                <strong>Orta</strong>
+                                <span class="legend-range">1500–3000 ppm</span>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color high"></span>
+                            <div class="legend-text">
+                                <strong>Yüksek</strong>
+                                <span class="legend-range">TDS &gt; 3000 ppm</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </aside>
 
-            <!-- Merkez: Harita ve Grafikler -->
-            <section class="main-content">
-                <div class="map-container">
-                    <div id="map"></div>
+                <!-- Info Box -->
+                <div class="info-section">
+                    <h3>ℹ Hakkında</h3>
+                    <p>Bu sistem çevresel karar destek prototipidir. Kesin tahmin sunmaz, eğilim ve risk göstergeleri sağlar.</p>
+                    <p class="text-muted"><strong>Proje:</strong> Sweden Junior Water Prize 2026</p>
                 </div>
+            </div>
+        </aside>
 
-                <div class="charts-container">
-                    <div class="chart-box">
-                        <h3>Tuzluluk Zaman Serileri</h3>
+        <!-- Main Content Area -->
+        <section class="main-content">
+            <!-- Map Container (Always Visible) -->
+            <div class="map-section" id="mapSection">
+                <div id="map" class="map-canvas"></div>
+            </div>
+
+            <!-- Analytics Panels (Scrollable) -->
+            <div class="analytics-section" id="analyticsSection">
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <div class="chart-panel">
+                        <div class="panel-header">
+                            <h3>Tuzluluk Zaman Serileri</h3>
+                            <p class="panel-subtitle">Seçili sensörlerin TDS değişimi</p>
+                        </div>
                         <canvas id="salinityChart"></canvas>
                     </div>
-                    <div class="chart-box">
-                        <h3>Risk Dağılımı</h3>
+
+                    <div class="chart-panel">
+                        <div class="panel-header">
+                            <h3>Risk Dağılımı</h3>
+                            <p class="panel-subtitle">Sensörlerin risk seviyeleri</p>
+                        </div>
                         <canvas id="riskChart"></canvas>
                     </div>
-                    <div class="chart-box">
-                        <h3>Sensör Özeti</h3>
+
+                    <div class="chart-panel">
+                        <div class="panel-header">
+                            <h3>Sensör Karşılaştırması</h3>
+                            <p class="panel-subtitle">TDS ve sıcaklık değerleri</p>
+                        </div>
                         <canvas id="summaryChart"></canvas>
                     </div>
                 </div>
 
-                <div class="data-table">
-                    <h3>Sensör Verileri</h3>
-                    <table id="dataTable">
-                        <thead>
-                            <tr>
-                                <th>Sensör ID</th>
-                                <th>Konum</th>
-                                <th>TDS (ppm)</th>
-                                <th>Sıcaklık (°C)</th>
-                                <th>Risk Seviyesi</th>
-                                <th>Son Güncelleme</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                        </tbody>
-                    </table>
+                <!-- Data Table -->
+                <div class="table-panel" id="tableSection">
+                    <div class="panel-header">
+                        <h3>Sensör Verileri</h3>
+                        <p class="panel-subtitle">Gerçek zamanlı ölçümler</p>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="dataTable" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Sensör ID</th>
+                                    <th>Konum</th>
+                                    <th>TDS (ppm)</th>
+                                    <th>Sıcaklık (°C)</th>
+                                    <th>Risk</th>
+                                    <th>Güncelleme</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
-            </section>
+            </div>
+        </section>
     </main>
 
-    <footer class="footer">
-        <p>Sweden Junior Water Prize 2026 | Türkiye DSİ | Açık Bilim & Açık Veri Proje</p>
-        <p><small>Veri: Örnek / Simüle Edilmiş | Kod: <a href="https://github.com" target="_blank">GitHub</a></small></p>
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <p>Sweden Junior Water Prize 2026 • Türkiye DSİ • Açık Bilim Projesi</p>
+            <p class="footer-meta">Veri: Simüle Edilmiş | <span id="lastUpdate">Son Güncelleme: --</span></p>
+        </div>
     </footer>
 
     <!-- Leaflet JS -->
@@ -147,5 +234,6 @@
     <script src="js/map-renderer.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/theme.js"></script>
 </body>
 </html>

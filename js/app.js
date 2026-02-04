@@ -65,9 +65,9 @@ class App {
             timeSlider.addEventListener('input', (e) => this.onTimeSliderChange(e));
         }
 
-        // Risk filtresi butonları
-        document.querySelectorAll('.risk-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.onRiskFilterToggle(e));
+        // Risk filtresi checkboxes
+        document.querySelectorAll('.filter-checkbox input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => this.onRiskFilterToggle(e));
         });
 
         // Sensör seçimi
@@ -109,12 +109,10 @@ class App {
      * Risk filtresi toggle
      */
     onRiskFilterToggle(e) {
-        const btn = e.target;
-        const risk = btn.dataset.risk;
+        const checkbox = e.target;
+        const risk = checkbox.dataset.risk;
 
-        btn.classList.toggle('active');
-
-        if (btn.classList.contains('active')) {
+        if (checkbox.checked) {
             if (!this.activeRiskFilters.includes(risk)) {
                 this.activeRiskFilters.push(risk);
             }
@@ -181,6 +179,18 @@ class App {
         this.filterAndRender();
         this.updateTable();
         chartManager.updateCharts(this.filteredSensors, this.selectedSensor?.id);
+        this.updateLastUpdate();
+    }
+
+    /**
+     * Son güncelleme zamanını göster
+     */
+    updateLastUpdate() {
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        if (lastUpdateEl) {
+            const now = new Date();
+            lastUpdateEl.textContent = `Son Güncelleme: ${now.toLocaleString('tr-TR')}`;
+        }
     }
 
     /**
