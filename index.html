@@ -1,6 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeraltı Suyu Tuzlanması ve Obruk Risk Monitoring Sistemi</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <!-- Chart.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
 <body>
-sa
+    <header class="header">
+        <div class="container">
+            <h1>🌊 Yeraltı Suyu İzleme Sistemi</h1>
+            <p class="subtitle">Tuzlanma ve Obruk Risk Analizi</p>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- Sol Panel: Kontroller -->
+        <aside class="sidebar">
+            <section class="control-panel">
+                <h2>Kontroller</h2>
+                
+                <div class="control-group">
+                    <label for="timeSlider">Zaman Seçimi</label>
+                    <input type="range" id="timeSlider" min="0" max="100" value="100" class="slider">
+                    <span id="timeDisplay">Son Veri</span>
+                </div>
+
+                <div class="control-group">
+                    <label>Risk Seviyesi Filtresi</label>
+                    <div class="filter-buttons">
+                        <button class="risk-btn risk-low active" data-risk="low">Düşük</button>
+                        <button class="risk-btn risk-medium active" data-risk="medium">Orta</button>
+                        <button class="risk-btn risk-high active" data-risk="high">Yüksek</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="sensorSelect">Sensör Seç</label>
+                    <select id="sensorSelect">
+                        <option value="">Tümü</option>
+                    </select>
+                </div>
+
+                <div class="stat-box">
+                    <h3>İstatistikler</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Aktif Sensör:</span>
+                        <span class="stat-value" id="activeSensors">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Ort. Tuzluluk:</span>
+                        <span class="stat-value" id="avgSalinity">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Max Risk:</span>
+                        <span class="stat-value" id="maxRisk">-</span>
+                    </div>
+                </div>
+
+                <div class="legend">
+                    <h3>Risk Efsanesi</h3>
+                    <div class="legend-item">
+                        <span class="legend-color low"></span>
+                        <span>Düşük Risk (TDS < 1500 ppm)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color medium"></span>
+                        <span>Orta Risk (TDS 1500-3000 ppm)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color high"></span>
+                        <span>Yüksek Risk (TDS > 3000 ppm)</span>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>ℹ️ Bilgi</h3>
+                    <p><strong>Bu sistem:</strong> Çevresel karar destek prototipidir. Kesin tahmin sunmaz, eğilim ve risk göstergesi sağlar.</p>
+                    <p><strong>Veri kaynağı:</strong> IoT sensörlerinden simüle edilmiş veriler.</p>
+                </div>
+            </aside>
+
+            <!-- Merkez: Harita ve Grafikler -->
+            <section class="main-content">
+                <div class="map-container">
+                    <div id="map"></div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="chart-box">
+                        <h3>Tuzluluk Zaman Serileri</h3>
+                        <canvas id="salinityChart"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Risk Dağılımı</h3>
+                        <canvas id="riskChart"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Sensör Özeti</h3>
+                        <canvas id="summaryChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <h3>Sensör Verileri</h3>
+                    <table id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>Sensör ID</th>
+                                <th>Konum</th>
+                                <th>TDS (ppm)</th>
+                                <th>Sıcaklık (°C)</th>
+                                <th>Risk Seviyesi</th>
+                                <th>Son Güncelleme</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+    </main>
+
+    <footer class="footer">
+        <p>Sweden Junior Water Prize 2026 | Türkiye DSİ | Açık Bilim & Açık Veri Proje</p>
+        <p><small>Veri: Örnek / Simüle Edilmiş | Kod: <a href="https://github.com" target="_blank">GitHub</a></small></p>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <!-- Custom Scripts -->
+    <script src="js/data-loader.js"></script>
+    <script src="js/risk-analyzer.js"></script>
+    <script src="js/map-renderer.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
