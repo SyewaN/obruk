@@ -1,103 +1,60 @@
-# hydrosense-map
-## Sweden Junior Water Prize - Türkiye DSİ Projesi
+# 🌊 HydroSense Monitor
 
-### 🎯 Proje Amacı
-Yeraltı suyu tuzlanması ve buna bağlı obruk (çökme) riskini gerçek zamanlı izleyen, bilimsel metodlarla analiz eden ve karar vericilere sade şekilde sunan açık kaynak bir çevresel izleme sistemidir.
+**Sweden Junior Water Prize 2026** - Türkiye DSİ  
+*Yeraltı Suyu Tuzlanması & Obruk Risk Monitoring Sistemi*
 
-### 📊 Sistem Mimarisi
+---
 
-```
-IoT Katmanı (ESP32)
-    ↓
-Veri Toplama ve Depolama
-    ↓
-Analiz Motoru (Python)
-    ↓
-Statik Veri Katmanı (JSON/GeoJSON)
-    ↓
-Görselleştirme (GitHub Pages)
-```
+## 📋 Proje Özeti
 
-### 📁 Klasör Yapısı
+HydroSense Monitor, yeraltı suyu tuzlanması (salinite) ve dolayısıyla obruk (çökme) riskini izleyen, açıklanabilir analitik yöntemlerle değerlendiren ve karar destek sağlayan **çevresel izleme sistemi** prototipidir.
 
-```
-water-salinity-monitor/
-├── hardware/              # ESP32 ve sensör kodları
-│   ├── esp32-main/       # Ana ESP32 firmware
-│   └── README.md         # Donanım kurulum dokümantasyonu
-│
-├── backend/              # Veri işleme ve analiz
-│   ├── data-collector/  # Veri toplama servisi
-│   ├── analyzer/        # Python analiz motoru
-│   ├── models/          # Veri modelleri
-│   └── tests/           # Test dosyaları
-│
-├── frontend/            # GitHub Pages arayüzü
-│   ├── index.html
-│   ├── css/
-│   ├── js/
-│   └── data/           # Statik JSON/GeoJSON dosyaları
-│
-├── docs/               # Dokümantasyon
-│   ├── architecture.md
-│   ├── api-spec.md
-│   └── scientific-methodology.md
-│
-└── examples/           # Örnek veriler ve kullanım senaryoları
-    ├── sample-data/
-    └── simulations/
-```
+**⚠️ Önemli:** Bu sistem kesin tahmin sunmaz. Eğilim göstergeleri ve risk uyarıları sağlar.
 
-### 🔬 Bilimsel Metodoloji
+---
 
-**Ölçülen Parametreler:**
-- Elektriksel İletkenlik (EC) / TDS - tuzluluk göstergesi
-- Su sıcaklığı
-- Zaman damgası
-- Coğrafi konum (GPS)
+## 🎨 Kullanıcı Arayüzü (Frontend)
 
-**Hesaplanan Risk Göstergeleri:**
-- Tuzluluk artış hızı (dEC/dt)
-- Kısa/uzun dönem sapma analizi
-- Mekânsal korelasyon (komşu sensörler)
-- Bölgesel risk indeksi (0-100)
+### **Tasarım Felsefesi**
+- **Akademik & Profesyonel:** Bilim makaleleri ve raporlardan ilham alan tasarım
+- **Koyu Tema (Gruvbox):** Göz rahatlığı ve gece kullanımı için optimize
+- **Açık Tema Seçeneği:** Kullanıcı tercihine göre değiştirilebilir
+- **Responsive:** Masaüstü, tablet ve mobil cihazlarda optimal deneyim
 
-**Risk Sınıflandırması:**
-- **Düşük (0-33)**: Normal değişim
-- **Orta (34-66)**: Dikkat gerektiren eğilim
-- **Yüksek (67-100)**: Acil izleme gerekli
+### **Ana Bileşenler**
 
-### 🛠️ Teknoloji Yığını
+#### 1. **Header (Başlık)**
+- Başlık ve Alt başlık
+- Tema Toggle Butonu (🌙 / ☀️)
+- Sidebar Toggle Butonu (📋)
 
-**Donanım:**
-- ESP32 DevKit
-- TDS/EC Sensör
-- DS18B20 Sıcaklık Sensörü
-- GPS Modülü (opsiyonel - sabit konumlar için manuel giriş)
+#### 2. **Collapsible Sidebar (Sol Panel)**
+**Özellikleri:**
+- Desktop: Daima görünür
+- Tablet/Mobil: Açılabilir/Kapatılabilir
 
-**Backend:**
-- Python 3.9+
-- NumPy, Pandas (veri analizi)
-- Scipy (istatistiksel analiz)
-- GeoPandas (mekânsal analiz)
+**Paneller:**
+- **Görünüm Seçenekleri:** Harita, İstatistikler, Tablo ayrı ayrı açılabilir
+- **Risk Filtresi:** Düşük/Orta/Yüksek risk sensörlerini seçli kontrol
+- **Zaman Seçimi:** Slider ile geçmiş verileri görebilme
+- **Sensör Seçimi:** Dropdown ile spesifik sensör seçimi
+- **Özet İstatistikler:** Aktif sensör, Ortalama TDS, Maksimum Risk
+- **Risk Efsanesi:** TDS değeri ve risk seviyesi tanımı
+- **Bilgi Kutusu:** Sistem hakkında açıklama
 
-**Frontend:**
-- Vanilla JavaScript (framework yok)
-- Leaflet.js (harita)
-- Chart.js (grafikler)
-- GitHub Pages (hosting)
+#### 3. **Main Content Area**
 
-### 🚀 Geliştirme Aşamaları
+**A. Harita Bölgesi (Sağ Üst)**
+- Leaflet.js ile interactive harita
+- Renkli sensör markerları (Düşük 🟢 / Orta 🟡 / Yüksek 🔴)
+- Popup bilgileri ve tooltip'ler
+- Zoom, pan, basemap seçim
 
-#### Faz 1: Statik Prototip (ŞU AN)
-- [ ] Frontend arayüzü (Leaflet harita)
-- [ ] Örnek veri ile görselleştirme
-- [ ] Temel analiz algoritmaları
-- [ ] GeoJSON veri formatı
-
-#### Faz 2: Analiz Motoru
-- [ ] Python risk hesaplama modülü
-- [ ] Zaman serisi analizi
+**B. Analitik Bölgesi (Sağ Alt - Kaydırılabilir)**
+- **Tuzluluk Zaman Serileri:** Seçili sensörlerin TDS trendi (line chart)
+- **Risk Dağılımı:** Pie chart (Low/Medium/High oranları)
+- **Sensör Karşılaştırması:** Bar chart (TDS vs Sıcaklık)
+- **Sensör Verileri Tablosu:** Gerçek zamanlı ölçümler
 - [ ] Veri validasyonu
 - [ ] Test senaryoları
 
@@ -140,15 +97,88 @@ Bu proje Sweden Junior Water Prize başvurusu kapsamında geliştirilmektedir. P
 - [Adınız] - Sistem Tasarımı ve Analiz
 - [Ekip Arkadaşlarınız]
 
-### 📄 Lisans
+---
 
-Bu proje açık bilim prensipleriyle paylaşılmaktadır. Detaylar için LICENSE dosyasına bakınız.
+## 🏗️ Proje Yapısı
 
-### 🔗 İlgili Linkler
-
-- DSİ: https://www.dsi.gov.tr/
-- Sweden Junior Water Prize: https://www.siwi.org/sjwp/
-- Proje Dokümantasyonu: [docs/](./docs/)
+```
+obruk/
+├── index.html                # Ana HTML (Collapsible sidebar + Maps)
+├── css/
+│   └── style.css             # Gruvbox tema, responsive design
+├── js/
+│   ├── app.js               # Ana uygulama mantığı
+│   ├── data-loader.js       # GeoJSON veri yükleme
+│   ├── risk-analyzer.js     # Risk hesaplama motoru
+│   ├── map-renderer.js      # Leaflet harita rendering
+│   ├── charts.js            # Chart.js grafikler
+│   └── theme.js             # Tema ve UI yönetimi
+├── data/
+│   └── sensors.geojson      # Sensör verileri (GeoJSON formatı)
+└── README.md                # Bu dosya
+```
 
 ---
-**Not:** Bu proje bir "web sitesi" değil, çevresel karar destek prototipi olarak tasarlanmıştır. Tüm risk tahminleri istatistiksel modellere dayanır ve kesinlik iddiası taşımaz.
+
+## 🚀 Kurulum & Çalıştırma
+
+### **Gereksinimler**
+- Modern web tarayıcısı (Chrome, Firefox, Safari, Edge)
+- İnternet bağlantısı (CDN'lerden dosya yükleme)
+
+### **Yerel Geliştirme**
+
+```bash
+# Python HTTP Server
+python -m http.server 8000
+
+# Node.js http-server
+npx http-server
+
+# VS Code Live Server
+# Sağ tıkla → Open with Live Server
+```
+
+**Erişim:** `http://localhost:8000`
+
+### **GitHub Pages'e Dağıt**
+
+1. Repository'i klonla veya fork et
+2. Settings → Pages → Branch: main → Save
+3. 2-3 dakika bekle
+4. Siteniz `https://username.github.io/obruk` adresinde live olur
+
+---
+
+## 📚 Kaynaklar
+
+- **Leaflet.js:** Harita görselleştirme
+- **Chart.js:** İnteraktif grafikler
+- **GeoJSON Spec:** https://tools.ietf.org/html/rfc7946
+- **OpenStreetMap:** Harita verileri
+
+---
+
+## 📄 Lisans & Etik
+
+- **Açık Kaynak:** MIT License
+- **Açık Veri:** Tüm veriler GeoJSON formatında erişilebilir
+- **Açık Bilim:** Kod tamamen okunabilir ve denetlenebilir
+
+**Sorumluluk Beyanı:** Bu sistem "risk göstergesi" sunar, kesin tahmin değil. Başlıca karar verme süreci için yetkili kurumlarla koordine edilmesi gerekir.
+
+---
+
+## 👥 Proje Ekibi
+
+**Sweden Junior Water Prize 2026**  
+Türkiye DSİ (Devlet Su İşleri)  
+İzleme & Analiz Sistemi
+
+---
+
+## ⏰ Güncelleme Tarihi
+
+*Son Güncelleme: 4 Şubat 2026*
+
+Tema tasarımı, collapsible sidebar ve akademik UI tamamlandı. Frontend ve backend entegrasyon devam ediyor.
