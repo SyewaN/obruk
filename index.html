@@ -3,63 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroSense Monitor - Demo</title>
+    <title>HydroSense Monitor - Academic Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
-    <!-- Başlık -->
-    <header>
-        <h1>🌊 HydroSense Monitor</h1>
-        <p>Yeraltı Suyu Monitoring Demo</p>
-    </header>
-
-    <!-- Ana içerik -->
-    <main>
-        <!-- Kontrol paneli -->
-        <aside class="sidebar">
-            <h2>Kontroller</h2>
-            <div class="control-group">
-                <label>Tema:</label>
-                <button id="themeToggle">🌙 Koyu</button>
-            </div>
-            <div class="control-group">
-                <label>Risk Filtresi:</label>
-                <label><input type="checkbox" data-risk="low" checked> 🟢 Düşük</label>
-                <label><input type="checkbox" data-risk="medium" checked> 🟡 Orta</label>
-                <label><input type="checkbox" data-risk="high" checked> 🔴 Yüksek</label>
-            </div>
-            <div class="control-group">
-                <label>Sensör Seç:</label>
-                <select id="sensorSelect">
-                    <option value="">Tümü</option>
-                </select>
-            </div>
-            <div class="stats">
-                <div class="stat">
-                    <strong id="sensorCount">0</strong>
-                    <small>Sensör</small>
+<body class="light-theme">
+    <!-- Top Navbar (Sticky) -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <!-- Left: Logo + Title -->
+            <div class="navbar-left">
+                <div class="navbar-logo-section">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%233E4453'/%3E%3Cpath d='M16 8v16M12 14h8' stroke='%23ECEEF4' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" alt="Logo" class="navbar-logo">
+                    <span class="navbar-title">HydroSense</span>
                 </div>
-                <div class="stat">
-                    <strong id="avgTds">-</strong>
-                    <small>Ort. TDS</small>
+            </div>
+
+            <!-- Center: Empty for balance -->
+            <div class="navbar-center"></div>
+
+            <!-- Right: Controls -->
+            <div class="navbar-right">
+                <button id="themeToggle" class="navbar-btn" title="Tema Değiştir">
+                    <i class="fas fa-sun"></i>
+                </button>
+                <a href="https://github.com" class="navbar-btn" title="GitHub" target="_blank">
+                    <i class="fas fa-github"></i>
+                </a>
+                <button id="aboutBtn" class="navbar-btn" title="Hakkında">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Sidebar Panel -->
+        <aside class="sidebar-panel">
+            <div class="sidebar-header">
+                <h3>Kontrol Merkezi</h3>
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Data Display Section -->
+                <div class="control-section">
+                    <h4 class="section-title">Genel İstatistikler</h4>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="sensorCount">0</div>
+                            <div class="stat-label">Aktif Sensör</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="avgTds">-</div>
+                            <div class="stat-label">Ort. TDS (ppm)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Section -->
+                <div class="control-section">
+                    <h4 class="section-title">Risk Filtresi</h4>
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <input type="checkbox" data-risk="low" checked>
+                            <span class="filter-dot low"></span>
+                            Düşük Risk
+                        </label>
+                        <label class="filter-label">
+                            <input type="checkbox" data-risk="medium" checked>
+                            <span class="filter-dot medium"></span>
+                            Orta Risk
+                        </label>
+                        <label class="filter-label">
+                            <input type="checkbox" data-risk="high" checked>
+                            <span class="filter-dot high"></span>
+                            Yüksek Risk
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sensor Selection -->
+                <div class="control-section">
+                    <h4 class="section-title">Sensör Seçimi</h4>
+                    <select id="sensorSelect" class="sensor-select">
+                        <option value="">Tümü Görüntüle</option>
+                    </select>
+                </div>
+
+                <!-- Map Control -->
+                <div class="control-section">
+                    <button id="mapToggle" class="btn-primary">
+                        <i class="fas fa-map"></i> Harita Aç
+                    </button>
+                </div>
+
+                <!-- Map Settings (Hidden until map is open) -->
+                <div class="control-section map-settings" style="display: none;">
+                    <h4 class="section-title">Harita Ayarları</h4>
+                    <label class="filter-label">
+                        <input type="checkbox" id="sensorMarkersToggle" checked>
+                        Sensörleri Göster
+                    </label>
+                    <label class="filter-label">
+                        <input type="checkbox" id="satelliteToggle">
+                        Uydu Görüntüsü
+                    </label>
+                </div>
+
+                <div class="sidebar-footer">
+                    <small>Son Güncelleme: <span id="lastUpdate">--</span></small>
                 </div>
             </div>
         </aside>
 
-        <!-- Harita -->
-        <section class="map-container">
-            <div id="map"></div>
-        </section>
-    </main>
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- Dashboard Charts Section -->
+            <section class="dashboard-section">
+                <div class="dashboard-header">
+                    <h2>Veri Paneli</h2>
+                    <div class="time-filter">
+                        <button class="time-btn active" data-range="1w">1 Hafta</button>
+                        <button class="time-btn" data-range="2w">2 Hafta</button>
+                    </div>
+                </div>
 
-    <!-- Footer -->
-    <footer>
-        <p>Demo Site | Last Update: <span id="lastUpdate">--</span></p>
-    </footer>
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <!-- Chart 1: Time Series -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>TDS Seviyesi (Zaman Serisi)</h3>
+                            <span class="chart-meta">Son 7 gün</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="tdsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Risk Distribution -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Risk Dağılımı</h3>
+                            <span class="chart-meta">Güncel</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="riskChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 3: Sensor Comparison -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Sensör Karşılaştırması</h3>
+                            <span class="chart-meta">Top 5</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="comparisonChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 4: Statistics -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>İstatistiksel Özet</h3>
+                            <span class="chart-meta">Güncel</span>
+                        </div>
+                        <div class="stats-summary">
+                            <div class="summary-item">
+                                <span class="summary-label">Maksimum TDS</span>
+                                <span class="summary-value" id="maxTds">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Minimum TDS</span>
+                                <span class="summary-value" id="minTds">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Std. Sapma</span>
+                                <span class="summary-value" id="stdTds">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Anomali Oranı</span>
+                                <span class="summary-value" id="anomalyRate">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Map Container (Hidden by default) -->
+            <section class="map-section" style="display: none;">
+                <div class="map-header">
+                    <h2>Harita Görünümü</h2>
+                    <button id="mapClose" class="btn-close" title="Kapat">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="map" class="map-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal" id="aboutModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>HydroSense Monitor Hakkında</h3>
+                <button class="modal-close" id="modalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>HydroSense Monitor, yeraltı suyu kalitesini gerçek zamanlı olarak izlemek için tasarlanmış akademik bir veri gösterge panelidir.</p>
+                <p>Sistem sensörlerin TDS seviyelerini takip ederek su kalitesi risklerini belirler ve görselleştirir.</p>
+            </div>
+        </div>
+    </div>
 
     <!-- Leaflet -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     
     <!-- App scripts -->
     <script src="js/data-loader.js"></script>

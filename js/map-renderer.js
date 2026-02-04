@@ -13,7 +13,10 @@ class MapRenderer {
     initMap(elementId) {
         // Center on Turkey
         const center = [39.0, 35.0];
-        this.map = L.map(elementId).setView(center, 7);
+        this.map = L.map(elementId, { 
+            zoomControl: true,
+            attributionControl: true 
+        }).setView(center, 7);
 
         // Add basemap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -23,6 +26,13 @@ class MapRenderer {
 
         // Render sensors
         this.renderSensors(this.sensors);
+        
+        // Invalidate size when first shown
+        setTimeout(() => {
+            if (this.map) {
+                this.map.invalidateSize();
+            }
+        }, 100);
     }
 
     renderSensors(sensors) {
@@ -113,6 +123,39 @@ class MapRenderer {
                 marker.setStyle({ radius: 8, weight: 2 });
             }
         });
+    }
+
+    toggleMarkers(visible) {
+        this.markers.forEach((marker) => {
+            if (visible) {
+                marker.setStyle({ opacity: 1, fillOpacity: 0.9 });
+            } else {
+                marker.setStyle({ opacity: 0.2, fillOpacity: 0.1 });
+            }
+        });
+    }
+
+    toggleSatelliteView(useSatellite) {
+        // Remove existing layer
+        this.map.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) {
+                this.map.removeLayer(layer);
+            }
+        });
+        
+        // Add appropriate layer
+        const tileUrl = useSatellite 
+            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        
+        const attribution = useSatellite 
+            ? '© Esri' 
+            : '© OpenStreetMap contributors';
+        
+        L.tileLayer(tileUrl, {
+            attribution: attribution,
+            maxZoom: 18
+        }).addTo(this.map);
     }
 }
 
