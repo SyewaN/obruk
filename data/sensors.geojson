@@ -5,7 +5,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [33.6190, 40.6043]
+        "coordinates": [33.6800, 40.5900]
       },
       "properties": {
         "sensor_id": "S001",
