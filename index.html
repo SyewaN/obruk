@@ -8,31 +8,45 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="light-theme">
+<body class="light-theme" data-mode="academy">
     <!-- Top Navbar (Sticky) -->
     <nav class="navbar">
         <div class="navbar-container">
             <!-- Left: Logo + Title -->
             <div class="navbar-left">
                 <div class="navbar-logo-section">
+                    <button id="mobileSidebarBtn" class="navbar-btn mobile-only" title="Menü">
+                        <i class="fas fa-bars"></i>
+                    </button>
                     <img src="icon.png" alt="Logo" class="navbar-logo">
-                    <span class="navbar-title">HydroSense</span>
+                    <span class="navbar-title">OBRUKÇU EŞEK</span>
                 </div>
             </div>
 
-            <!-- Center: Empty for balance -->
-            <div class="navbar-center"></div>
+            <!-- Center: Mode Toggle -->
+            <div class="navbar-center">
+                <div class="mode-toggle" role="tablist" aria-label="Görünüm modu">
+                    <button class="mode-toggle-btn" data-mode="farmer" role="tab" aria-selected="false">
+                        <i class="fas fa-tractor"></i>
+                        <span data-i18n="mode.farmer">Son Kullanıcı / Farmer</span>
+                    </button>
+                    <button class="mode-toggle-btn active" data-mode="academy" role="tab" aria-selected="true">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span data-i18n="mode.academy">Öğrenci / Akademi</span>
+                    </button>
+                </div>
+            </div>
 
             <!-- Right: Controls -->
             <div class="navbar-right">
                 <button id="themeToggle" class="navbar-btn" title="Tema Değiştir">
                     <i class="fas fa-sun"></i>
                 </button>
-                <a href="https://github.com/SyewaN/hydrosense-map" class="navbar-btn" title="GitHub" target="_blank">
-                    <i class="fab fa-github"></i>
-                </a>
-                <button id="aboutBtn" class="navbar-btn" title="Hakkında">
-                    <i class="fas fa-info-circle"></i>
+                <button id="readDeviceBtn" class="navbar-btn" title="Cihazdan Oku ve Gönder">
+                    <i class="fab fa-bluetooth-b"></i>
+                </button>
+                <button id="settingsBtn" class="navbar-btn" title="Ayarlar">
+                    <i class="fas fa-sliders-h"></i>
                 </button>
             </div>
         </div>
@@ -43,89 +57,101 @@
         <!-- Left Sidebar Panel -->
         <aside class="sidebar-panel">
             <div class="sidebar-header">
-                <h3>Kontrol Merkezi</h3>
+                <h3 data-i18n="sidebar.title">Kontrol Merkezi</h3>
                 <button class="sidebar-toggle" id="sidebarToggle">
                     <i class="fas fa-chevron-right"></i>
                 </button>
+            </div>
+            <div class="sidebar-mode-toggle">
+                <div class="mode-toggle" role="tablist" aria-label="Görünüm modu">
+                    <button class="mode-toggle-btn" data-mode="farmer" role="tab" aria-selected="false">
+                        <i class="fas fa-tractor"></i>
+                        <span data-i18n="mode.farmer">Son Kullanıcı / Farmer</span>
+                    </button>
+                    <button class="mode-toggle-btn active" data-mode="academy" role="tab" aria-selected="true">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span data-i18n="mode.academy">Öğrenci / Akademi</span>
+                    </button>
+                </div>
             </div>
 
             <nav class="sidebar-nav">
                 <!-- Stats Section -->
                 <div class="nav-section">
-                    <div class="nav-title">İstatistikler</div>
+                    <div class="nav-title" data-i18n="sidebar.stats">İstatistikler</div>
                     <div class="nav-items">
                         <div class="stat-mini-card">
                             <span class="stat-mini-value" id="sensorCount">0</span>
-                            <span class="stat-mini-label">Toplam Sensör</span>
+                            <span class="stat-mini-label" data-i18n="sidebar.totalSensors">Toplam Sensör</span>
                         </div>
                         <div class="stat-mini-card">
                             <span class="stat-mini-value" id="avgTds">-</span>
-                            <span class="stat-mini-label">Ortalama TDS (ppm)</span>
+                            <span class="stat-mini-label" data-i18n="sidebar.avgTds">Ortalama TDS (ppm)</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Filters Section -->
                 <div class="nav-section">
-                    <div class="nav-title">Risk Seviyeleri</div>
+                    <div class="nav-title" data-i18n="sidebar.riskLevels">Risk Seviyeleri</div>
                     <div class="nav-items">
                         <label class="nav-item">
                             <input type="checkbox" data-risk="low" checked>
                             <span class="filter-indicator low"></span>
-                            <span>Düşük</span>
+                            <span data-i18n="sidebar.low">Düşük</span>
                         </label>
                         <label class="nav-item">
                             <input type="checkbox" data-risk="medium" checked>
                             <span class="filter-indicator medium"></span>
-                            <span>Orta</span>
+                            <span data-i18n="sidebar.medium">Orta</span>
                         </label>
                         <label class="nav-item">
                             <input type="checkbox" data-risk="high" checked>
                             <span class="filter-indicator high"></span>
-                            <span>Yüksek</span>
+                            <span data-i18n="sidebar.high">Yüksek</span>
                         </label>
                     </div>
                 </div>
 
                 <!-- Sensors Section -->
                 <div class="nav-section">
-                    <div class="nav-title">Sensör Seçimi</div>
+                    <div class="nav-title" data-i18n="sidebar.sensorSelect">Sensör Seçimi</div>
                     <div class="nav-items">
                         <select id="sensorSelect" class="sensor-select">
-                            <option value="">Tümü Görüntüle</option>
+                            <option value="" data-i18n="sidebar.viewAll">Tümü Görüntüle</option>
                         </select>
                     </div>
                 </div>
 
                 <!-- Map Control -->
                 <div class="nav-section">
-                    <div class="nav-title">Harita</div>
+                    <div class="nav-title" data-i18n="sidebar.map">Harita</div>
                     <div class="nav-items">
                         <button id="mapToggle" class="nav-btn">
-                            <i class="fas fa-map"></i> Aç
+                            <i class="fas fa-map"></i> <span data-i18n="sidebar.mapOpen">Aç</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Map Settings -->
                 <div class="nav-section map-settings" style="display: none;">
-                    <div class="nav-title">Harita Tipi</div>
+                    <div class="nav-title" data-i18n="sidebar.mapType">Harita Tipi</div>
                     <div class="nav-items">
                         <label class="nav-item">
                             <input type="radio" name="mapType" value="normal" checked>
-                            <span>Normal Harita</span>
+                            <span data-i18n="sidebar.mapNormal">Normal Harita</span>
                         </label>
                         <label class="nav-item">
                             <input type="radio" name="mapType" value="satellite">
-                            <span>Uydu Görüntüsü</span>
+                            <span data-i18n="sidebar.mapSatellite">Uydu Görüntüsü</span>
                         </label>
                         <label class="nav-item">
                             <input type="radio" name="mapType" value="nasa-water">
-                            <span>NASA Su Haritası</span>
+                            <span data-i18n="sidebar.mapNasa">NASA Su Haritası</span>
                         </label>
                         <label class="nav-item">
                             <input type="checkbox" id="sensorMarkersToggle" checked>
-                            <span>Sensörleri Göster</span>
+                            <span data-i18n="sidebar.showSensors">Sensörleri Göster</span>
                         </label>
                     </div>
                 </div>
@@ -135,90 +161,144 @@
                 <small id="lastUpdate">--</small>
             </div>
         </aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <!-- Main Content Area -->
         <main class="content-area">
             <!-- Dashboard Charts Section -->
             <section class="dashboard-section">
                 <div class="dashboard-header">
-                    <h2>Güncel Durum</h2>
-                    <div class="time-filter">
-                        <button class="time-btn active" data-range="1w">1 Hafta</button>
-                        <button class="time-btn" data-range="2w">2 Hafta</button>
+                    <h2 id="dashboardTitle" data-i18n="dashboard.academyTitle">Akademi Paneli</h2>
+                    <div class="time-filter" data-mode="academy">
+                        <button class="time-btn active" data-range="1w" data-i18n="time.1w">1 Hafta</button>
+                        <button class="time-btn" data-range="2w" data-i18n="time.2w">2 Hafta</button>
+                    </div>
+                    <div class="data-controls">
+                        <span id="dataStatus" class="data-status">Cihaz bağlı değil</span>
                     </div>
                 </div>
 
-                <!-- User-facing indicators: Obruk Riski & Tuzlanma Durumu -->
-                <div class="indicators">
-                    <div class="indicator-card" id="obriskIndicator">
-                        <div class="indicator-title">Obruk Riski</div>
-                        <div class="indicator-value">-</div>
-                        <div class="indicator-desc">Çiftçilere yönelik kısa açıklama.</div>
-                    </div>
-                    <div class="indicator-card" id="salinityIndicator">
-                        <div class="indicator-title">Tuzlanma Durumu</div>
-                        <div class="indicator-value">-</div>
-                        <div class="indicator-desc">Toprak/güncel tuzlanma durumu.</div>
-                    </div>
-                </div>
-
-                <!-- Charts Grid -->
-                <div class="charts-grid">
-                    <!-- Chart 1: Time Series -->
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>TDS Seviyesi (Zaman Serisi)</h3>
-                            <span class="chart-meta">Son 7 gün</span>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="tdsChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Chart 2: Risk Distribution -->
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>Risk Dağılımı</h3>
-                            <span class="chart-meta">Güncel</span>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="riskChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Chart 3: Sensor Comparison -->
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>Sensör Karşılaştırması</h3>
-                            <span class="chart-meta">Top 5</span>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="comparisonChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Chart 4: Statistics -->
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>İstatistiksel Özet</h3>
-                            <span class="chart-meta">Güncel</span>
-                        </div>
-                        <div class="stats-summary">
-                            <div class="summary-item">
-                                <span class="summary-label">Maksimum TDS</span>
-                                <span class="summary-value" id="maxTds">-</span>
+                <div class="mode-panels">
+                    <!-- Farmer / End-User Mode -->
+                    <div class="mode-panel" data-mode="farmer">
+                        <div class="indicators">
+                            <div class="indicator-card" id="obriskIndicator">
+                                <div class="indicator-title" data-i18n="farmer.obrukTitle">Obruk Riski</div>
+                                <div class="indicator-value">-</div>
+                                <div class="indicator-meter">
+                                    <span class="indicator-fill" data-meter="obrisk"></span>
+                                </div>
+                                <div class="indicator-desc" data-i18n="farmer.obrukDesc">Çiftçilere yönelik kısa açıklama.</div>
                             </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Minimum TDS</span>
-                                <span class="summary-value" id="minTds">-</span>
+                            <div class="indicator-card" id="salinityIndicator">
+                                <div class="indicator-title" data-i18n="farmer.salinityTitle">Tuzlanma Durumu</div>
+                                <div class="indicator-value">-</div>
+                                <div class="indicator-meter">
+                                    <span class="indicator-fill" data-meter="salinity"></span>
+                                </div>
+                                <div class="indicator-desc" data-i18n="farmer.salinityDesc">Toprak/güncel tuzlanma durumu.</div>
                             </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Std. Sapma</span>
-                                <span class="summary-value" id="stdTds">-</span>
+                        </div>
+
+                        <div class="charts-grid farmer-grid">
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 data-i18n="farmer.toleranceTitle">🌿 Bitkilerin Tuzluluk Toleransı</h3>
+                                    <span class="chart-meta" data-i18n="meta.summary">Özet</span>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="cropToleranceChart"></canvas>
+                                </div>
                             </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Anomali Oranı</span>
-                                <span class="summary-value" id="anomalyRate">-</span>
+
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 data-i18n="farmer.cropsTitle">🪴 Ekilen Ürünler: Tuzluluk & pH</h3>
+                                    <span class="chart-meta" data-i18n="meta.top5">Top 5</span>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="cropPhChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 data-i18n="farmer.yieldTitle">📉 Verim Düşüşü Eğilimi</h3>
+                                    <span class="chart-meta" data-i18n="meta.8w">Son 8 hafta</span>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="yieldDropChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 data-i18n="farmer.moistureTitle">💧 Toprak Nem Göstergesi</h3>
+                                    <span class="chart-meta" data-i18n="meta.current">Güncel</span>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="soilMoistureChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Academic Mode -->
+                    <div class="mode-panel" data-mode="academy">
+                        <div class="charts-grid">
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 data-i18n="academy.tdsTitle">TDS Seviyesi (Zaman Serisi)</h3>
+                                    <span class="chart-meta" data-i18n="meta.7d">Son 7 gün</span>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="tdsChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 data-i18n="academy.riskTitle">Risk Dağılımı</h3>
+                                    <span class="chart-meta" data-i18n="meta.current">Güncel</span>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="riskChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 data-i18n="academy.compareTitle">Sensör Karşılaştırması</h3>
+                                    <span class="chart-meta" data-i18n="meta.top5">Top 5</span>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="comparisonChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 data-i18n="academy.statsTitle">İstatistiksel Özet</h3>
+                                    <span class="chart-meta" data-i18n="meta.current">Güncel</span>
+                                </div>
+                                <div class="stats-summary">
+                                    <div class="summary-item">
+                                        <span class="summary-label" data-i18n="stats.max">Maksimum TDS</span>
+                                        <span class="summary-value" id="maxTds">-</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label" data-i18n="stats.min">Minimum TDS</span>
+                                        <span class="summary-value" id="minTds">-</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label" data-i18n="stats.std">Std. Sapma</span>
+                                        <span class="summary-value" id="stdTds">-</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label" data-i18n="stats.anomaly">Anomali Oranı</span>
+                                        <span class="summary-value" id="anomalyRate">-</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -228,7 +308,7 @@
             <!-- Map Container (Hidden by default) -->
             <section class="map-section" style="display: none;">
                 <div class="map-header">
-                    <h2>Harita Görünümü</h2>
+                    <h2 data-i18n="map.title">Harita Görünümü</h2>
                     <button id="mapClose" class="btn-close" title="Kapat">
                         <i class="fas fa-times"></i>
                     </button>
@@ -238,18 +318,43 @@
         </main>
     </div>
 
-    <!-- About Modal -->
-    <div class="modal" id="aboutModal" style="display: none;">
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Projemiz Hakkında</h3>
-                <button class="modal-close" id="modalClose">
+                <h3 data-i18n="settings.title">Ayarlar</h3>
+                <button class="modal-close" id="settingsClose">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
-                <p>Projemiz farklı bölgelerdeki esp aygıtları ile aldıkları veriler arasında korelasyon tahmini yaparak obruk ve su tuzlanma riskini tahmin eder.</p>
-                <p>Proje kesinlik iddia etmez, deneyseldir.</p>
+                <div class="settings-grid">
+                    <div class="settings-card" data-settings="language">
+                        <div class="settings-title" data-i18n="settings.language">Dil</div>
+                        <div class="settings-control">
+                            <button class="lang-btn active" data-lang="tr">TR</button>
+                            <button class="lang-btn" data-lang="en">EN</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="settings-title" data-i18n="settings.links">Bağlantılar</div>
+                        <div class="settings-control">
+                            <a href="https://github.com/SyewaN/hydrosense-map" target="_blank" class="settings-link">
+                                <i class="fab fa-github"></i>
+                                <span data-i18n="settings.github">GitHub Deposu</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="settings-title" data-i18n="settings.about">Hakkında</div>
+                        <div class="settings-control">
+                            <p data-i18n="settings.aboutText1">Projemiz farklı bölgelerdeki esp aygıtları ile aldıkları veriler arasında korelasyon tahmini yaparak obruk ve su tuzlanma riskini tahmin eder.</p>
+                            <p data-i18n="settings.aboutText2">Proje kesinlik iddia etmez, deneyseldir.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
