@@ -342,19 +342,45 @@ class App {
             this.updateDataStatus('Gönderilecek veri yok');
             return;
         }
+        const remaining = [];
+        let sentCount = 0;
+        let lastError = null;
 
-        try {
-            // Backend genelde tek ölçüm objesi beklediği için sırayla gönder.
-            for (const row of queue) {
-                const payload = this.toApiPayload(row);
-                await sendToAPI(payload);
+        // Backend tek ölçüm objesi beklediği için sırayla gönder.
+        for (const row of queue) {
+            const payload = this.toApiPayload(row);
+            const hasAnyValue = Number.isFinite(payload.soil) || Number.isFinite(payload.salinity) || Number.isFinite(payload.temp);
+            if (!hasAnyValue) {
+                // Boş/bozuk satırı tekrar denemeye sokma.
+                continue;
             }
-        } catch (err) {
-            throw new Error(`Ingest fetch hatasi: ${this.getFetchErrorMessage(err)}`);
+
+            try {
+                await sendToAPI(payload);
+                sentCount += 1;
+            } catch (err) {
+                remaining.push(row);
+                lastError = err;
+            }
         }
 
-        localStorage.removeItem(STORAGE_KEY);
-        this.updateDataStatus('Veriler sunucuya gönderildi');
+        if (remaining.length) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+        } else {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+
+        if (sentCount > 0 && remaining.length === 0) {
+            this.updateDataStatus(`Veriler sunucuya gönderildi (${sentCount})`);
+            return;
+        }
+
+        if (sentCount > 0 && remaining.length > 0) {
+            this.updateDataStatus(`Kismi gonderim: ${sentCount} basarili, ${remaining.length} beklemede`);
+            return;
+        }
+
+        throw new Error(`Ingest fetch hatasi: ${this.getFetchErrorMessage(lastError)}`);
     }
 
     /**
