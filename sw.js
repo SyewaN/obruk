@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'hydrosense-v1';
+const CACHE_VERSION = 'hydrosense-v2';
 const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
 

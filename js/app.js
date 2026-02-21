@@ -314,6 +314,7 @@ class App {
             const res = await fetch(LATEST_ENDPOINT, { cache: 'no-store' });
             if (!res.ok) return;
             const payload = await res.json();
+            console.log("API DATA:", payload);
             const latest = payload && typeof payload === 'object' && payload.latest ? payload.latest : payload;
             const normalized = this.normalizeSyncedReading(latest);
             if (!normalized) return;
@@ -374,10 +375,16 @@ class App {
         const moisture = Number(data.moisture ?? data.humidity ?? data.nem ?? data.soil);
         const temp = Number(data.temp ?? data.temperature ?? data.sicaklik);
         const timestamp = data.timestamp || data.syncedAt || new Date().toISOString();
+
+        const safeTds = Number.isFinite(tds) ? tds : null;
+        const safeMoisture = Number.isFinite(moisture) ? moisture : null;
+        const safeTemp = Number.isFinite(temp) ? temp : null;
+        if (safeTds === null && safeMoisture === null && safeTemp === null) return null;
+
         return {
-            tds: Number.isFinite(tds) ? tds : null,
-            moisture: Number.isFinite(moisture) ? moisture : null,
-            temp: Number.isFinite(temp) ? temp : null,
+            tds: safeTds,
+            moisture: safeMoisture,
+            temp: safeTemp,
             timestamp
         };
     }
@@ -502,12 +509,19 @@ class App {
     }
 
     updateLiveValues(data) {
+        if (!data || typeof data !== 'object') return;
         const tdsEl = document.getElementById('liveTds');
         const moistureEl = document.getElementById('liveMoisture');
         const tempEl = document.getElementById('liveTemp');
         if (tdsEl) tdsEl.textContent = Number.isFinite(data.tds) ? `${data.tds} ppm` : '-';
         if (moistureEl) moistureEl.textContent = Number.isFinite(data.moisture) ? `${data.moisture}%` : '-';
         if (tempEl) tempEl.textContent = Number.isFinite(data.temp) ? `${data.temp}°C` : '-';
+
+        // Minimal dashboard uyumluluğu (varsa bu id'lere de yaz)
+        const soilEl = document.getElementById('soil');
+        const salinityEl = document.getElementById('salinity');
+        if (soilEl) soilEl.textContent = Number.isFinite(data.moisture) ? `${data.moisture}` : '-';
+        if (salinityEl) salinityEl.textContent = Number.isFinite(data.tds) ? `${data.tds}` : '-';
     }
 
     // ====== THEME MANAGEMENT ======
