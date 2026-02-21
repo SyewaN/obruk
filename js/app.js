@@ -437,18 +437,33 @@ class App {
                             this.updateLastSyncValue(normalized.timestamp);
                         }
 
+                        this.bleConnected = true;
                         this.updateConnectionStatus('Cihaz bağlı');
                         this.updateDataStatus('✅ Gönderildi!');
                     } else {
                         await this.connectBluetoothDevice();
                         await this.startBluetoothNotifications();
+                        this.bleConnected = true;
                         this.updateConnectionStatus('Cihaz bağlı');
                         this.updateDataStatus('Veri bekleniyor');
                     }
                 } catch (err) {
-                    this.updateConnectionStatus('Cihaz bağlı değil');
-                    this.updateDataStatus('❌ ' + (err && err.message ? err.message : 'Eşitleme hatası'));
-                    console.error('Sync failed:', err);
+                    // BLESync üzerinden okuma başarısızsa, doğrudan BLE fallback ile tekrar dene.
+                    try {
+                        this.updateDataStatus('Bağlantı yeniden deneniyor...');
+                        await this.connectBluetoothDevice();
+                        await this.startBluetoothNotifications();
+                        this.bleConnected = true;
+                        this.updateConnectionStatus('Cihaz bağlı');
+                        this.updateDataStatus('Veri bekleniyor');
+                    } catch (fallbackErr) {
+                        this.bleConnected = false;
+                        this.updateConnectionStatus('Cihaz bağlı değil');
+                        const msg = fallbackErr && fallbackErr.message ? fallbackErr.message : (err && err.message ? err.message : 'Eşitleme hatası');
+                        this.updateDataStatus('❌ ' + msg);
+                        console.error('Sync failed:', err);
+                        console.error('Direct BLE fallback failed:', fallbackErr);
+                    }
                 } finally {
                     syncBtn.disabled = false;
                     if (labelEl) labelEl.textContent = prevLabel || 'Verileri Eşitle';
