@@ -129,11 +129,17 @@
     }
 
     emit(onStatus, 'Sunucuya gönderiliyor...');
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...state.config.headers },
-      body: JSON.stringify(queue)
-    });
+    let res;
+    try {
+      res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...state.config.headers },
+        body: JSON.stringify(queue)
+      });
+    } catch (err) {
+      emit(onStatus, 'Sunucuya erisilemiyor (network/CORS)');
+      throw err;
+    }
 
     if (!res.ok) {
       throw new Error('Sunucuya gönderim başarısız');

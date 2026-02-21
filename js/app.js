@@ -276,14 +276,19 @@ class App {
             return;
         }
 
-        const res = await fetch(INGEST_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': API_KEY
-            },
-            body: JSON.stringify(queue)
-        });
+        let res;
+        try {
+            res = await fetch(INGEST_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': API_KEY
+                },
+                body: JSON.stringify(queue)
+            });
+        } catch (err) {
+            throw new Error(`Ingest fetch hatasi: ${this.getFetchErrorMessage(err)}`);
+        }
 
         if (!res.ok) {
             throw new Error(`Server error: ${res.status}`);
@@ -324,6 +329,7 @@ class App {
             this.updateDataStatus();
         } catch (err) {
             console.error('Latest API fetch failed:', err);
+            this.updateDataStatus(`Latest fetch: ${this.getFetchErrorMessage(err)}`);
         }
     }
 
@@ -349,6 +355,13 @@ class App {
         } catch (err) {
             console.error('History API fetch failed:', err);
         }
+    }
+
+    getFetchErrorMessage(err) {
+        const msg = String(err?.message || err || '');
+        if (!navigator.onLine) return 'internet yok';
+        if (msg.toLowerCase().includes('failed to fetch')) return 'sunucuya ulasilamadi / CORS / SSL';
+        return msg || 'bilinmeyen ag hatasi';
     }
 
     initBLESync() {
