@@ -147,8 +147,13 @@
     async sync(onStatus) {
       const reading = await readDevice(onStatus);
       enqueue(reading);
-      await flushQueue(onStatus);
-      emit(onStatus, '✅ Gönderildi!');
+      try {
+        await flushQueue(onStatus);
+        emit(onStatus, '✅ Gönderildi!');
+      } catch (err) {
+        // BLE okuma başarılıysa veriyi localde tut ve sync'i düşürme.
+        emit(onStatus, 'BLE okundu, gönderim beklemede');
+      }
       return reading;
     },
 
