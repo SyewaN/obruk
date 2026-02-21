@@ -338,6 +338,7 @@ class App {
      */
     async sendStoredDataToServer() {
         const queue = this.getStoredQueue();
+        console.log('SEND QUEUE:', queue);
         if (!queue.length) {
             this.updateDataStatus('Gönderilecek veri yok');
             return;
@@ -345,6 +346,7 @@ class App {
         const remaining = [];
         let sentCount = 0;
         let lastError = null;
+        let skippedCount = 0;
 
         // Backend tek ölçüm objesi beklediği için sırayla gönder.
         for (const row of queue) {
@@ -352,6 +354,7 @@ class App {
             const hasAnyValue = Number.isFinite(payload.soil) || Number.isFinite(payload.salinity) || Number.isFinite(payload.temp);
             if (!hasAnyValue) {
                 // Boş/bozuk satırı tekrar denemeye sokma.
+                skippedCount += 1;
                 continue;
             }
 
@@ -370,17 +373,23 @@ class App {
             localStorage.removeItem(STORAGE_KEY);
         }
 
+        if (sentCount === 0 && remaining.length === 0) {
+            this.updateDataStatus(`Geçerli veri bulunamadı (atlanan: ${skippedCount})`);
+            return;
+        }
+
         if (sentCount > 0 && remaining.length === 0) {
-            this.updateDataStatus(`Veriler sunucuya gönderildi (${sentCount})`);
+            this.updateDataStatus(`Veriler sunucuya gönderildi (${sentCount}, atlanan: ${skippedCount})`);
             return;
         }
 
         if (sentCount > 0 && remaining.length > 0) {
-            this.updateDataStatus(`Kismi gonderim: ${sentCount} basarili, ${remaining.length} beklemede`);
+            this.updateDataStatus(`Kismi gonderim: ${sentCount} basarili, ${remaining.length} beklemede, ${skippedCount} atlandi`);
             return;
         }
 
-        throw new Error(`Ingest fetch hatasi: ${this.getFetchErrorMessage(lastError)}`);
+        const lastErrorText = lastError && lastError.message ? lastError.message : this.getFetchErrorMessage(lastError);
+        throw new Error(`Ingest fetch hatasi: ${lastErrorText}`);
     }
 
     /**
