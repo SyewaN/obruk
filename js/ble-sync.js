@@ -121,6 +121,15 @@
   async function flushQueue(onStatus) {
     const queue = readLocal();
     if (!queue.length) return { sent: 0, remaining: 0 };
+    const payload = queue.map((row) => ({
+      soil: Number.isFinite(row?.moisture) ? row.moisture : null,
+      salinity: Number.isFinite(row?.tds) ? row.tds : null,
+      temp: Number.isFinite(row?.temp) ? row.temp : null,
+      timestamp: row?.timestamp || new Date().toISOString(),
+      // geriye uyumluluk
+      moisture: Number.isFinite(row?.moisture) ? row.moisture : null,
+      tds: Number.isFinite(row?.tds) ? row.tds : null
+    }));
 
     const apiUrl = state.config.apiUrl;
     if (!apiUrl || apiUrl === 'API_URL_BURAYA' || !navigator.onLine) {
@@ -134,7 +143,7 @@
       res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...state.config.headers },
-        body: JSON.stringify(queue)
+        body: JSON.stringify(payload)
       });
     } catch (err) {
       emit(onStatus, 'Sunucuya erisilemiyor (network/CORS)');

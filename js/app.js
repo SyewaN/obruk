@@ -9,8 +9,8 @@ const API_BASE = (
     localStorage.getItem('hydrosense-api-base') ||
     'https://syewan.ynh.fr/obruk-api'
 ).replace(/\/+$/, '');
-const API_KEY = window.HYDROSENSE_API_KEY || localStorage.getItem('hydrosense-api-key') || 'TESTKEY';
-const INGEST_ENDPOINT = `${API_BASE}/sensor`;
+const API_KEY = window.HYDROSENSE_API_KEY || localStorage.getItem('hydrosense-api-key') || '';
+const INGEST_ENDPOINT = `${API_BASE}/data`;
 const LATEST_ENDPOINT = `${API_BASE}/data/latest.json`;
 const HISTORY_ENDPOINT = `${API_BASE}/data/history.json`;
 const STORAGE_KEY = 'hydrosense-ble-segments';
@@ -24,7 +24,27 @@ window.BLE_SYNC_DEVICE_NAME = BLE_DEVICE_NAME;
 window.BLE_SYNC_SERVICE_UUID = BLE_SERVICE_UUID;
 window.BLE_SYNC_CHARACTERISTIC_UUID = BLE_CHARACTERISTIC_UUID;
 window.BLE_SYNC_LOCAL_KEY = STORAGE_KEY;
-window.BLE_SYNC_API_HEADERS = { 'x-api-key': API_KEY };
+window.BLE_SYNC_API_HEADERS = API_KEY ? { 'x-api-key': API_KEY } : {};
+
+function sendToAPI(data) {
+    const headers = { "Content-Type": "application/json" };
+    if (API_KEY) headers["x-api-key"] = API_KEY;
+
+    return fetch("https://syewan.ynh.fr/obruk-api/data", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data)
+    })
+        .then(res => res.json())
+        .then(res => {
+            console.log("API OK:", res);
+            return res;
+        })
+        .catch(err => {
+            console.error("API ERROR:", err);
+            throw err;
+        });
+}
 
 class App {
     constructor() {
@@ -235,10 +255,27 @@ class App {
             this.latestReading = data;
             this.updateLiveValues(data);
             this.updateDataStatus();
+            if (navigator.onLine) {
+                sendToAPI(this.toApiPayload(data)).catch(() => {
+                    this.updateDataStatus('API gönderimi başarısız, localde saklandı');
+                });
+            }
         } catch (err) {
             this.updateDataStatus('JSON parse hatası');
             console.error('Sensor parse failed:', err);
         }
+    }
+
+    toApiPayload(data) {
+        return {
+            soil: Number.isFinite(data?.moisture) ? data.moisture : null,
+            salinity: Number.isFinite(data?.tds) ? data.tds : null,
+            temp: Number.isFinite(data?.temp) ? data.temp : null,
+            timestamp: data?.timestamp || new Date().toISOString(),
+            // geriye uyumluluk
+            moisture: Number.isFinite(data?.moisture) ? data.moisture : null,
+            tds: Number.isFinite(data?.tds) ? data.tds : null
+        };
     }
 
     /**
@@ -275,23 +312,12 @@ class App {
             this.updateDataStatus('Gönderilecek veri yok');
             return;
         }
+        const payload = queue.map((row) => this.toApiPayload(row));
 
-        let res;
         try {
-            res = await fetch(INGEST_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': API_KEY
-                },
-                body: JSON.stringify(queue)
-            });
+            await sendToAPI(payload);
         } catch (err) {
             throw new Error(`Ingest fetch hatasi: ${this.getFetchErrorMessage(err)}`);
-        }
-
-        if (!res.ok) {
-            throw new Error(`Server error: ${res.status}`);
         }
 
         localStorage.removeItem(STORAGE_KEY);
