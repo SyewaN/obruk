@@ -59,7 +59,11 @@
       throw new Error('Web Bluetooth desteklenmiyor');
     }
 
-    if (state.characteristic) return state.characteristic;
+    // Stale characteristic'i kullanma: cihaz bağlı değilse sıfırla.
+    if (state.characteristic && state.device?.gatt?.connected) {
+      return state.characteristic;
+    }
+    state.characteristic = null;
 
     emit(onStatus, 'Bluetooth cihazı aranıyor...');
     state.device = await navigator.bluetooth.requestDevice({
@@ -90,11 +94,28 @@
   }
 
   async function readDevice(onStatus) {
-    const characteristic = await connect(onStatus);
-    emit(onStatus, 'Veri okunuyor...');
-    const value = await characteristic.readValue();
-    const text = new TextDecoder('utf-8').decode(value);
-    return parsePayload(text);
+    // Bazı cihazlarda ilk read sırasında "GATT Error: Unknown" dönebiliyor.
+    // Bu durumda bir kez yeniden bağlanıp tekrar dener.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const characteristic = await connect(onStatus);
+        emit(onStatus, 'Veri okunuyor...');
+        const value = await characteristic.readValue();
+        const text = new TextDecoder('utf-8').decode(value);
+        return parsePayload(text);
+      } catch (err) {
+        const message = String(err?.message || err || '').toLowerCase();
+        const isGattUnknown = message.includes('gatt') && message.includes('unknown');
+        state.characteristic = null;
+        if (state.device?.gatt?.connected) {
+          try { state.device.gatt.disconnect(); } catch (_) {}
+        }
+        if (!isGattUnknown || attempt === 1) {
+          throw err;
+        }
+        emit(onStatus, 'Bağlantı yenileniyor...');
+      }
+    }
   }
 
   async function flushQueue(onStatus) {
