@@ -1,7 +1,8 @@
 (function (global) {
-  const LOCAL_KEY = 'hydrosense-ble-local';
+  const LOCAL_KEY = global.BLE_SYNC_LOCAL_KEY || 'hydrosense-ble-segments';
   const DEFAULTS = {
     apiUrl: '',
+    headers: {},
     deviceName: 'TarlaSensor',
     serviceUuid: '12345678-1234-1234-1234-123456789abc',
     characteristicUuid: '87654321-4321-4321-4321-cba987654321'
@@ -109,7 +110,7 @@
     emit(onStatus, 'Sunucuya gönderiliyor...');
     const res = await fetch(apiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...state.config.headers },
       body: JSON.stringify(queue)
     });
 
@@ -127,6 +128,7 @@
         ...DEFAULTS,
         ...state.config,
         ...options,
+        headers: { ...DEFAULTS.headers, ...(global.BLE_SYNC_API_HEADERS || {}), ...(options.headers || {}) },
         deviceName: options.deviceName || global.BLE_SYNC_DEVICE_NAME || state.config.deviceName,
         serviceUuid: options.serviceUuid || global.BLE_SYNC_SERVICE_UUID || state.config.serviceUuid,
         characteristicUuid: options.characteristicUuid || global.BLE_SYNC_CHARACTERISTIC_UUID || state.config.characteristicUuid

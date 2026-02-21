@@ -3,19 +3,28 @@
  * Main application controller with theme, panel, map, and chart management
  */
 
-// Backend hazır olduğunda değiştirilecek.
-const API_BASE = "https://api.example.com";
+// PM2 backend adresi: window.HYDROSENSE_API_BASE veya localStorage('hydrosense-api-base')
+const API_BASE = (
+    window.HYDROSENSE_API_BASE ||
+    localStorage.getItem('hydrosense-api-base') ||
+    'https://syewan.ynh.fr/obruk-api'
+).replace(/\/+$/, '');
+const API_KEY = window.HYDROSENSE_API_KEY || localStorage.getItem('hydrosense-api-key') || 'TESTKEY';
 const INGEST_ENDPOINT = `${API_BASE}/sensor`;
-const STORAGE_KEY = 'hydrosense-sensor-queue';
+const LATEST_ENDPOINT = `${API_BASE}/data/latest.json`;
+const HISTORY_ENDPOINT = `${API_BASE}/data/history.json`;
+const STORAGE_KEY = 'hydrosense-ble-segments';
 const BLE_DEVICE_NAME = 'TarlaSensor';
 // ESP ile birebir eşleşen UUID'ler
 const BLE_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
 const BLE_CHARACTERISTIC_UUID = '87654321-4321-4321-4321-cba987654321';
-const BLE_SYNC_API_URL = 'API_URL_BURAYA';
+const BLE_SYNC_API_URL = INGEST_ENDPOINT;
 
 window.BLE_SYNC_DEVICE_NAME = BLE_DEVICE_NAME;
 window.BLE_SYNC_SERVICE_UUID = BLE_SERVICE_UUID;
 window.BLE_SYNC_CHARACTERISTIC_UUID = BLE_CHARACTERISTIC_UUID;
+window.BLE_SYNC_LOCAL_KEY = STORAGE_KEY;
+window.BLE_SYNC_API_HEADERS = { 'x-api-key': API_KEY };
 
 class App {
     constructor() {
@@ -33,6 +42,7 @@ class App {
         this.bleCharacteristic = null;
         this.bleConnected = false;
         this.mockMode = false;
+        this.serverHistory = [];
         this.charts = {};
         this.onCharacteristicChanged = this.onCharacteristicChanged.bind(this);
         this.init();
@@ -101,7 +111,18 @@ class App {
 
         // Dashboard canlı kalsın diye periyodik güncelleme.
         this.loadLatestFromLocal();
-        setInterval(() => this.autoSyncWhenOnline(), 30000);
+        this.refreshLatestFromApi();
+        this.refreshHistoryFromApi();
+        // API'den canlı veri akışı (3 sn)
+        setInterval(() => {
+            this.refreshLatestFromApi();
+        }, 3000);
+
+        // Local queue -> AWS/PM2 ingest + history refresh
+        setInterval(() => {
+            this.autoSyncWhenOnline();
+            this.refreshHistoryFromApi();
+        }, 30000);
         
         // Update timestamp
         this.updateTimestamp();
@@ -259,7 +280,7 @@ class App {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': 'TESTKEY'
+                'x-api-key': API_KEY
             },
             body: JSON.stringify(queue)
         });
@@ -284,13 +305,61 @@ class App {
         }
     }
 
+    /**
+     * Sunucuda işlenmiş en güncel veriyi alıp ekrana yansıtır.
+     */
+    async refreshLatestFromApi() {
+        if (!navigator.onLine) return;
+        try {
+            const res = await fetch(LATEST_ENDPOINT, { cache: 'no-store' });
+            if (!res.ok) return;
+            const payload = await res.json();
+            const latest = payload && typeof payload === 'object' && payload.latest ? payload.latest : payload;
+            const normalized = this.normalizeSyncedReading(latest);
+            if (!normalized) return;
+            this.latestReading = normalized;
+            this.updateLiveValues(normalized);
+            this.updateLastSyncValue(normalized.timestamp);
+            this.updateDataStatus();
+        } catch (err) {
+            console.error('Latest API fetch failed:', err);
+        }
+    }
+
+    /**
+     * Sunucudaki geçmiş veriyi çekip grafikleri dinamik günceller.
+     */
+    async refreshHistoryFromApi() {
+        if (!navigator.onLine) return;
+        try {
+            const res = await fetch(HISTORY_ENDPOINT, { cache: 'no-store' });
+            if (!res.ok) return;
+            const payload = await res.json();
+            const history = Array.isArray(payload) ? payload : (Array.isArray(payload.history) ? payload.history : []);
+            if (!history.length) return;
+
+            this.serverHistory = history
+                .map((row) => this.normalizeSyncedReading(row))
+                .filter((row) => row && Number.isFinite(row.tds));
+
+            if (!this.serverHistory.length) return;
+            this.updateCharts();
+            this.updateDataStatus();
+        } catch (err) {
+            console.error('History API fetch failed:', err);
+        }
+    }
+
     initBLESync() {
         if (!window.BLESync) {
             this.updateConnectionStatus("BLESync hazır değil");
             return;
         }
         try {
-            window.BLESync.init({ apiUrl: BLE_SYNC_API_URL });
+            window.BLESync.init({
+                apiUrl: BLE_SYNC_API_URL,
+                headers: { 'x-api-key': API_KEY }
+            });
         } catch (err) {
             console.error("BLESync init failed:", err);
         }
@@ -298,8 +367,11 @@ class App {
 
     normalizeSyncedReading(data) {
         if (!data || typeof data !== "object") return null;
-        const tds = Number(data.tds ?? data.TDS ?? data.tdsValue);
-        const moisture = Number(data.moisture ?? data.humidity ?? data.nem);
+        // API format uyumluluğu:
+        // - BLE payload: { tds, moisture, temp }
+        // - Backend latest: { soil, salinity, ... }
+        const tds = Number(data.tds ?? data.TDS ?? data.tdsValue ?? data.salinity);
+        const moisture = Number(data.moisture ?? data.humidity ?? data.nem ?? data.soil);
         const temp = Number(data.temp ?? data.temperature ?? data.sicaklik);
         const timestamp = data.timestamp || data.syncedAt || new Date().toISOString();
         return {
@@ -392,6 +464,7 @@ class App {
 
         window.addEventListener('online', () => {
             this.autoSyncWhenOnline();
+            this.refreshLatestFromApi();
         });
     }
 
@@ -1047,8 +1120,19 @@ class App {
 
     updateCharts() {
         if (this.charts.tds) {
-            this.charts.tds.data.labels = this.generateDateLabels(7);
-            this.charts.tds.data.datasets[0].data = this.generateTimeSeriesData(7);
+            if (this.serverHistory.length) {
+                const recent = this.serverHistory.slice(-14);
+                this.charts.tds.data.labels = recent.map((row) => {
+                    const d = new Date(row.timestamp);
+                    return Number.isNaN(d.getTime())
+                        ? '-'
+                        : d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                });
+                this.charts.tds.data.datasets[0].data = recent.map((row) => row.tds);
+            } else {
+                this.charts.tds.data.labels = this.generateDateLabels(7);
+                this.charts.tds.data.datasets[0].data = this.generateTimeSeriesData(7);
+            }
             this.charts.tds.update();
         }
     }
