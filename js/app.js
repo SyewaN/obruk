@@ -4,7 +4,18 @@
  */
 
 // Backend hazır olduğunda değiştirilecek.
-const API_BASE = "https://example.com";
+const API_BASE = "https://api.example.com";
+const INGEST_ENDPOINT = `${API_BASE}/sensor`;
+const STORAGE_KEY = 'hydrosense-sensor-queue';
+const BLE_DEVICE_NAME = 'TarlaSensor';
+// ESP ile birebir eşleşen UUID'ler
+const BLE_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+const BLE_CHARACTERISTIC_UUID = '87654321-4321-4321-4321-cba987654321';
+const BLE_SYNC_API_URL = 'API_URL_BURAYA';
+
+window.BLE_SYNC_DEVICE_NAME = BLE_DEVICE_NAME;
+window.BLE_SYNC_SERVICE_UUID = BLE_SERVICE_UUID;
+window.BLE_SYNC_CHARACTERISTIC_UUID = BLE_CHARACTERISTIC_UUID;
 
 class App {
     constructor() {
@@ -17,8 +28,13 @@ class App {
         this.language = 'tr';
         this.translations = this.buildTranslations();
         this.latestReading = null;
-        this.lastFetchAttempted = false;
+        this.bleDevice = null;
+        this.bleServer = null;
+        this.bleCharacteristic = null;
+        this.bleConnected = false;
+        this.mockMode = false;
         this.charts = {};
+        this.onCharacteristicChanged = this.onCharacteristicChanged.bind(this);
         this.init();
     }
 
@@ -73,6 +89,7 @@ class App {
         this.setupModalControls();
         this.setupLanguageControls();
         this.setupDeviceControls();
+        this.initBLESync();
         
         // Initialize charts
         this.initCharts();
@@ -83,8 +100,8 @@ class App {
         this.render();
 
         // Dashboard canlı kalsın diye periyodik güncelleme.
-        this.refreshLatestData();
-        setInterval(() => this.refreshLatestData(), 30000);
+        this.loadLatestFromLocal();
+        setInterval(() => this.autoSyncWhenOnline(), 30000);
         
         // Update timestamp
         this.updateTimestamp();
@@ -102,110 +119,322 @@ class App {
      */
     async getSensorData() {
         const bluetoothData = await this.readBluetoothData();
-        if (bluetoothData) {
-            return bluetoothData;
-        }
+        if (bluetoothData) return bluetoothData;
+        this.mockMode = true;
         return this.getMockSensorData();
     }
 
     /**
-     * Bluetooth cihazına bağlanır.
-     * TODO: ESP cihazı geldiğinde burada
-     * Web Bluetooth ile servis ve karakteristik okunacak.
+     * Bluetooth bağlantısını başlatır.
+     * TODO: ESP hazır olduğunda burada requestDevice, GATT server,
+     * service ve characteristic okunacak.
      */
     async connectBluetoothDevice() {
-        // TODO: ESP hazır olduğunda burada
-        // requestDevice, GATT server,
-        // service ve characteristic okunacak.
+        if (!navigator.bluetooth) {
+            throw new Error('Web Bluetooth desteklenmiyor');
+        }
+        this.bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ name: BLE_DEVICE_NAME }],
+            optionalServices: [BLE_SERVICE_UUID]
+        });
+        this.bleServer = await this.bleDevice.gatt.connect();
+        const service = await this.bleServer.getPrimaryService(BLE_SERVICE_UUID);
+        this.bleCharacteristic = await service.getCharacteristic(BLE_CHARACTERISTIC_UUID);
+        this.bleConnected = true;
+        this.mockMode = false;
+        this.bleDevice.addEventListener('gattserverdisconnected', () => {
+            this.bleConnected = false;
+            this.updateConnectionStatus('Cihaz bağlı değil');
+        });
     }
 
     /**
-     * Bluetooth üzerinden sensör verisini okur.
-     * TODO: ESP cihazı geldiğinde burada
-     * Web Bluetooth ile servis ve karakteristik okunacak.
+     * Bluetooth notify dinlemeyi başlatır.
+     * TODO: ESP hazır olduğunda karakteristik notify formatı burada netleşecek.
+     */
+    async startBluetoothNotifications() {
+        if (!this.bleCharacteristic) throw new Error('BLE characteristic bulunamadı');
+        await this.bleCharacteristic.startNotifications();
+        this.bleCharacteristic.removeEventListener('characteristicvaluechanged', this.onCharacteristicChanged);
+        this.bleCharacteristic.addEventListener('characteristicvaluechanged', this.onCharacteristicChanged);
+    }
+
+    /**
+     * Bluetooth'tan bir kez veri okumayı dener.
+     * Cihaz hazır değilse null döner ve mock fallback tetiklenir.
      */
     async readBluetoothData() {
-        // Placeholder: ESP geldiğinde doldurulacak
-        return null;
+        if (!this.bleCharacteristic) return null;
+        const value = await this.bleCharacteristic.readValue();
+        const text = new TextDecoder('utf-8').decode(value);
+        return this.parseSensorPayload(text);
     }
 
     /**
-     * Mock data üretimi.
+     * BLE notify callback.
+     */
+    onCharacteristicChanged(event) {
+        const value = event.target.value;
+        const text = new TextDecoder('utf-8').decode(value);
+        this.processIncomingSensorText(text);
+    }
+
+    /**
+     * Mock data üretimi (geliştirme fallback).
      */
     getMockSensorData() {
         return {
-            soil_moisture: Math.round(Math.random() * 100),
-            air_temp: Math.round(15 + Math.random() * 15),
-            humidity: Math.round(40 + Math.random() * 40),
+            tds: Math.round(500 + Math.random() * 1800),
+            moisture: Math.round(Math.random() * 100),
+            temp: Number((15 + Math.random() * 15).toFixed(1)),
             timestamp: new Date().toISOString()
         };
     }
 
     /**
-     * Bluetooth'tan gelen veri buluta iletilir.
+     * UTF-8 metnini JSON parse edip beklenen sensör alanlarına map eder.
      */
-    async sendSensorData(data) {
-        const res = await fetch(`${API_BASE}/api/ingest`, {
+    parseSensorPayload(text) {
+        const parsed = JSON.parse(text);
+        return {
+            tds: Number(parsed.tds),
+            moisture: Number(parsed.moisture),
+            temp: Number(parsed.temp),
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    /**
+     * Gelen sensör metnini işler, kaydeder ve UI'a yansıtır.
+     */
+    processIncomingSensorText(text) {
+        try {
+            const data = this.parseSensorPayload(text);
+            this.persistDataPoint(data);
+            this.latestReading = data;
+            this.updateLiveValues(data);
+            this.updateDataStatus();
+        } catch (err) {
+            this.updateDataStatus('JSON parse hatası');
+            console.error('Sensor parse failed:', err);
+        }
+    }
+
+    /**
+     * Her ölçüm noktasını localStorage kuyruğuna yazar.
+     */
+    persistDataPoint(data) {
+        const queue = this.getStoredQueue();
+        queue.push({
+            ...data,
+            timestamp: data.timestamp || new Date().toISOString()
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+    }
+
+    /**
+     * localStorage kuyruğunu döner.
+     */
+    getStoredQueue() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (err) {
+            console.error('Storage parse failed:', err);
+            return [];
+        }
+    }
+
+    /**
+     * Bluetooth'tan gelen birikmiş veriyi buluta iletir.
+     */
+    async sendStoredDataToServer() {
+        const queue = this.getStoredQueue();
+        if (!queue.length) {
+            this.updateDataStatus('Gönderilecek veri yok');
+            return;
+        }
+
+        const res = await fetch(INGEST_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'x-api-key': 'TESTKEY'
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(queue)
         });
-        return res.ok;
+
+        if (!res.ok) {
+            throw new Error(`Server error: ${res.status}`);
+        }
+
+        localStorage.removeItem(STORAGE_KEY);
+        this.updateDataStatus('Veriler sunucuya gönderildi');
     }
 
     /**
-     * Dashboard her zaman sunucudaki en son veriyi gösterir.
+     * İnternet geldiğinde kuyruktaki veriyi otomatik yollar.
      */
-    async fetchLatestData() {
-        const res = await fetch(`${API_BASE}/data/latest.json`, { cache: 'no-store' });
-        if (!res.ok) return null;
-        return res.json();
+    async autoSyncWhenOnline() {
+        if (!navigator.onLine) return;
+        try {
+            await this.sendStoredDataToServer();
+        } catch (err) {
+            console.error('Auto sync failed:', err);
+        }
+    }
+
+    initBLESync() {
+        if (!window.BLESync) {
+            this.updateConnectionStatus("BLESync hazır değil");
+            return;
+        }
+        try {
+            window.BLESync.init({ apiUrl: BLE_SYNC_API_URL });
+        } catch (err) {
+            console.error("BLESync init failed:", err);
+        }
+    }
+
+    normalizeSyncedReading(data) {
+        if (!data || typeof data !== "object") return null;
+        const tds = Number(data.tds ?? data.TDS ?? data.tdsValue);
+        const moisture = Number(data.moisture ?? data.humidity ?? data.nem);
+        const temp = Number(data.temp ?? data.temperature ?? data.sicaklik);
+        const timestamp = data.timestamp || data.syncedAt || new Date().toISOString();
+        return {
+            tds: Number.isFinite(tds) ? tds : null,
+            moisture: Number.isFinite(moisture) ? moisture : null,
+            temp: Number.isFinite(temp) ? temp : null,
+            timestamp
+        };
+    }
+
+    getLatestBLELocalReading() {
+        if (!window.BLESync || typeof window.BLESync.getLocal !== "function") return null;
+        const localRows = window.BLESync.getLocal();
+        if (!Array.isArray(localRows) || !localRows.length) return null;
+        return localRows[localRows.length - 1];
+    }
+
+    updateLastSyncValue(timestamp) {
+        const lastSyncEl = document.getElementById("lastSyncValue");
+        if (!lastSyncEl) return;
+        const date = new Date(timestamp || Date.now());
+        if (Number.isNaN(date.getTime())) {
+            lastSyncEl.textContent = "-";
+            return;
+        }
+        lastSyncEl.textContent = date.toLocaleString("tr-TR");
     }
 
     setupDeviceControls() {
-        const btn = document.getElementById('readDeviceBtn');
-        if (!btn) return;
-        btn.addEventListener('click', async () => {
-            btn.disabled = true;
-            const statusEl = document.getElementById('dataStatus');
-            if (statusEl) statusEl.textContent = 'Veri gönderiliyor...';
-            try {
-                const data = await this.getSensorData();
-                const ok = await this.sendSensorData(data);
-                if (ok) {
-                    this.latestReading = data;
+        const syncBtn = document.getElementById('readDeviceBtn');
+        const sendBtn = document.getElementById('sendServerBtn');
+
+        if (syncBtn) {
+            syncBtn.addEventListener('click', async () => {
+                syncBtn.disabled = true;
+                const labelEl = syncBtn.querySelector('.navbar-btn-label');
+                const prevLabel = labelEl ? labelEl.textContent : '';
+                if (labelEl) labelEl.textContent = 'Bağlanıyor...';
+
+                this.updateConnectionStatus('BLE bağlantısı başlatılıyor');
+                this.updateDataStatus('Bağlanıyor...');
+
+                try {
+                    if (window.BLESync && typeof window.BLESync.sync === 'function') {
+                        const result = await window.BLESync.sync((message) => {
+                            this.updateDataStatus(message || 'Veri okunuyor...');
+                        });
+
+                        const normalized =
+                            this.normalizeSyncedReading(result) ||
+                            this.normalizeSyncedReading(this.getLatestBLELocalReading());
+
+                        if (normalized) {
+                            this.latestReading = normalized;
+                            this.updateLiveValues(normalized);
+                            this.updateLastSyncValue(normalized.timestamp);
+                        }
+
+                        this.updateConnectionStatus('Cihaz bağlı');
+                        this.updateDataStatus('✅ Gönderildi!');
+                    } else {
+                        await this.connectBluetoothDevice();
+                        await this.startBluetoothNotifications();
+                        this.updateConnectionStatus('Cihaz bağlı');
+                        this.updateDataStatus('Veri bekleniyor');
+                    }
+                } catch (err) {
+                    this.updateConnectionStatus('Cihaz bağlı değil');
+                    this.updateDataStatus('❌ ' + (err && err.message ? err.message : 'Eşitleme hatası'));
+                    console.error('Sync failed:', err);
+                } finally {
+                    syncBtn.disabled = false;
+                    if (labelEl) labelEl.textContent = prevLabel || 'Verileri Eşitle';
                 }
-                if (statusEl && !ok) statusEl.textContent = 'Gönderim başarısız';
-            } catch (err) {
-                if (statusEl) statusEl.textContent = 'Gönderim başarısız';
-                console.error('Device send failed:', err);
-            } finally {
-                this.updateDataStatus();
-                btn.disabled = false;
-            }
+            });
+        }
+        if (sendBtn) {
+            sendBtn.addEventListener('click', async () => {
+                sendBtn.disabled = true;
+                try {
+                    await this.sendStoredDataToServer();
+                } catch (err) {
+                    this.updateDataStatus('Sunucuya gönderim başarısız');
+                    console.error('Manual upload failed:', err);
+                } finally {
+                    sendBtn.disabled = false;
+                }
+            });
+        }
+
+        window.addEventListener('online', () => {
+            this.autoSyncWhenOnline();
         });
     }
 
-    async refreshLatestData() {
-        this.lastFetchAttempted = true;
-        const latest = await this.fetchLatestData().catch(() => null);
-        if (latest) {
-            this.latestReading = latest;
+    /**
+     * Son local veriyi yükler ve ekrana basar.
+     */
+    loadLatestFromLocal() {
+        const queue = this.getStoredQueue();
+        if (!queue.length) {
+            this.updateDataStatus('Veri bekleniyor');
+            return;
         }
+        this.latestReading = queue[queue.length - 1];
+        this.updateLiveValues(this.latestReading);
         this.updateDataStatus();
     }
 
-    updateDataStatus() {
+    updateConnectionStatus(text) {
+        const el = document.getElementById('connectionStatus');
+        if (el) el.textContent = text;
+    }
+
+    updateDataStatus(customMessage = '') {
         const statusEl = document.getElementById('dataStatus');
         if (!statusEl) return;
+        if (customMessage) {
+            statusEl.textContent = customMessage;
+            return;
+        }
         if (!this.latestReading) {
-            statusEl.textContent = this.lastFetchAttempted ? 'Veri bekleniyor' : 'Cihaz bağlı değil';
+            statusEl.textContent = this.bleConnected ? 'Veri bekleniyor' : 'Cihaz bağlı değil';
             return;
         }
         statusEl.textContent = `Son veri: ${new Date(this.latestReading.timestamp).toLocaleTimeString('tr-TR')}`;
+    }
+
+    updateLiveValues(data) {
+        const tdsEl = document.getElementById('liveTds');
+        const moistureEl = document.getElementById('liveMoisture');
+        const tempEl = document.getElementById('liveTemp');
+        if (tdsEl) tdsEl.textContent = Number.isFinite(data.tds) ? `${data.tds} ppm` : '-';
+        if (moistureEl) moistureEl.textContent = Number.isFinite(data.moisture) ? `${data.moisture}%` : '-';
+        if (tempEl) tempEl.textContent = Number.isFinite(data.temp) ? `${data.temp}°C` : '-';
     }
 
     // ====== THEME MANAGEMENT ======

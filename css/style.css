@@ -175,6 +175,19 @@ body.dark-theme .navbar {
     height: 36px;
 }
 
+.navbar-btn-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-left: 0.4rem;
+    white-space: nowrap;
+}
+
+.navbar-btn#readDeviceBtn,
+.navbar-btn#sendServerBtn {
+    width: auto;
+    padding: 0.45rem 0.65rem;
+}
+
 .navbar-btn:hover {
     background-color: var(--color-bg-tertiary);
     color: var(--color-accent);
@@ -567,6 +580,38 @@ body.sidebar-open .sidebar-overlay {
     border: 1px solid var(--color-bg-tertiary);
     padding: 0.35rem 0.6rem;
     border-radius: 6px;
+}
+
+.live-values {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.live-card {
+    background-color: #fff;
+    border: 1px solid var(--color-bg-tertiary);
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.live-label {
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+}
+
+.live-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+}
+
+body.dark-theme .live-card {
+    background-color: var(--color-bg-secondary);
 }
 
 /* Dashboard başlığı */
@@ -1304,6 +1349,16 @@ body.dark-theme .indicator-card {
         padding: 0;
     }
 
+    .navbar-btn#readDeviceBtn,
+    .navbar-btn#sendServerBtn {
+        width: 34px;
+        padding: 0;
+    }
+
+    .navbar-btn-label {
+        display: none;
+    }
+
     .mode-toggle-btn span {
         white-space: nowrap;
     }
@@ -1358,6 +1413,10 @@ body.dark-theme .indicator-card {
     .data-controls {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    .live-values {
+        grid-template-columns: 1fr;
     }
 
     .navbar-title {

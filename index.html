@@ -44,6 +44,11 @@
                 </button>
                 <button id="readDeviceBtn" class="navbar-btn" title="Cihazdan Oku ve Gönder">
                     <i class="fab fa-bluetooth-b"></i>
+                    <span class="navbar-btn-label">Verileri Eşitle</span>
+                </button>
+                <button id="sendServerBtn" class="navbar-btn" title="Sunucuya Gönder">
+                    <i class="fas fa-upload"></i>
+                    <span class="navbar-btn-label">Sunucuya Gönder</span>
                 </button>
                 <button id="settingsBtn" class="navbar-btn" title="Ayarlar">
                     <i class="fas fa-sliders-h"></i>
@@ -174,7 +179,27 @@
                         <button class="time-btn" data-range="2w" data-i18n="time.2w">2 Hafta</button>
                     </div>
                     <div class="data-controls">
-                        <span id="dataStatus" class="data-status">Cihaz bağlı değil</span>
+                        <span id="connectionStatus" class="data-status">Cihaz bağlı değil</span>
+                        <span id="dataStatus" class="data-status">Veri bekleniyor</span>
+                    </div>
+                </div>
+
+                <div class="live-values">
+                    <div class="live-card">
+                        <span class="live-label">TDS</span>
+                        <span class="live-value" id="liveTds">-</span>
+                    </div>
+                    <div class="live-card">
+                        <span class="live-label">Nem</span>
+                        <span class="live-value" id="liveMoisture">-</span>
+                    </div>
+                    <div class="live-card">
+                        <span class="live-label">Sıcaklık</span>
+                        <span class="live-value" id="liveTemp">-</span>
+                    </div>
+                    <div class="live-card">
+                        <span class="live-label">Son Sync</span>
+                        <span class="live-value" id="lastSyncValue">-</span>
                     </div>
                 </div>
 
@@ -367,6 +392,7 @@
     <!-- App scripts -->
     <script src="js/data-loader.js"></script>
     <script src="js/map-renderer.js"></script>
+    <script src="js/ble-sync.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
