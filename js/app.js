@@ -548,7 +548,8 @@ class App {
                 try {
                     await this.sendStoredDataToServer();
                 } catch (err) {
-                    this.updateDataStatus('Sunucuya gönderim başarısız');
+                    const msg = err && err.message ? err.message : 'Sunucuya gönderim başarısız';
+                    this.updateDataStatus(`Sunucuya gönderim başarısız: ${msg}`);
                     console.error('Manual upload failed:', err);
                 } finally {
                     sendBtn.disabled = false;
