@@ -283,6 +283,7 @@ class App {
             const data = this.parseSensorPayload(text);
             this.persistDataPoint(data);
             this.latestReading = data;
+            this.upsertSensorFromReading(data);
             this.updateLiveValues(data);
             this.updateDataStatus();
             if (navigator.onLine) {
@@ -302,6 +303,10 @@ class App {
             salinity: Number.isFinite(data?.tds) ? data.tds : null,
             temp: Number.isFinite(data?.temp) ? data.temp : null,
             timestamp: data?.timestamp || new Date().toISOString(),
+            sensor_id: data?.sensorId || data?.sensor_id || 'ESP-001',
+            sensor_name: data?.sensorName || data?.sensor_name || 'TarlaSensor',
+            lat: Number.isFinite(Number(data?.lat ?? data?.latitude)) ? Number(data?.lat ?? data?.latitude) : null,
+            lon: Number.isFinite(Number(data?.lon ?? data?.lng ?? data?.longitude)) ? Number(data?.lon ?? data?.lng ?? data?.longitude) : null,
             // geriye uyumluluk
             moisture: Number.isFinite(data?.moisture) ? data.moisture : null,
             tds: Number.isFinite(data?.tds) ? data.tds : null
@@ -418,9 +423,11 @@ class App {
             const normalized = this.normalizeSyncedReading(latest);
             if (!normalized) return;
             this.latestReading = normalized;
+            this.upsertSensorFromReading(normalized);
             this.updateLiveValues(normalized);
             this.updateLastSyncValue(normalized.timestamp);
             this.updateDataStatus();
+            this.render();
         } catch (err) {
             console.error('Latest API fetch failed:', err);
             this.updateDataStatus(`Latest fetch: ${this.getFetchErrorMessage(err)}`);
@@ -444,7 +451,12 @@ class App {
                 .filter((row) => row && Number.isFinite(row.tds));
 
             if (!this.serverHistory.length) return;
+            this.serverHistory.forEach((row) => this.upsertSensorFromReading(row, false));
+            if (this.mapOpen && window.mapRenderer) {
+                window.mapRenderer.renderSensors(this.sensors);
+            }
             this.updateCharts();
+            this.render();
             this.updateDataStatus();
         } catch (err) {
             console.error('History API fetch failed:', err);
@@ -482,18 +494,74 @@ class App {
         const moisture = Number(data.moisture ?? data.humidity ?? data.nem ?? data.soil);
         const temp = Number(data.temp ?? data.temperature ?? data.sicaklik);
         const timestamp = data.timestamp || data.syncedAt || new Date().toISOString();
+        const lat = Number(data.lat ?? data.latitude);
+        const lon = Number(data.lon ?? data.lng ?? data.longitude);
 
         const safeTds = Number.isFinite(tds) ? tds : null;
         const safeMoisture = Number.isFinite(moisture) ? moisture : null;
         const safeTemp = Number.isFinite(temp) ? temp : null;
+        const safeLat = Number.isFinite(lat) ? lat : null;
+        const safeLon = Number.isFinite(lon) ? lon : null;
         if (safeTds === null && safeMoisture === null && safeTemp === null) return null;
 
         return {
             tds: safeTds,
             moisture: safeMoisture,
             temp: safeTemp,
-            timestamp
+            timestamp,
+            sensorId: data.sensor_id || data.sensorId || 'ESP-001',
+            sensorName: data.sensor_name || data.sensorName || 'TarlaSensor',
+            lat: safeLat,
+            lon: safeLon
         };
+    }
+
+    inferRiskFromTds(tds) {
+        if (!Number.isFinite(tds)) return 'low';
+        if (tds < 1500) return 'low';
+        if (tds < 3000) return 'medium';
+        return 'high';
+    }
+
+    upsertSensorFromReading(reading, rerenderMap = true) {
+        if (!reading || !Number.isFinite(reading.tds)) return;
+        const sensorId = reading.sensorId || reading.sensor_id || 'ESP-001';
+        const sensorName = reading.sensorName || reading.sensor_name || 'TarlaSensor';
+        const existingIndex = this.sensors.findIndex((s) => s.id === sensorId);
+        const nowTs = reading.timestamp || new Date().toISOString();
+
+        if (existingIndex === -1) {
+            const seed = this.sensors[0] || null;
+            this.sensors.push({
+                id: sensorId,
+                name: sensorName,
+                lat: Number.isFinite(reading.lat) ? reading.lat : (seed?.lat ?? 37.60),
+                lon: Number.isFinite(reading.lon) ? reading.lon : (seed?.lon ?? 33.20),
+                tds: reading.tds,
+                temperature: Number.isFinite(reading.temp) ? reading.temp : 0,
+                riskLevel: this.inferRiskFromTds(reading.tds),
+                timestamp: nowTs,
+                dataPoints: [{ timestamp: nowTs, tds: reading.tds }]
+            });
+        } else {
+            const sensor = this.sensors[existingIndex];
+            sensor.name = sensorName;
+            if (Number.isFinite(reading.lat)) sensor.lat = reading.lat;
+            if (Number.isFinite(reading.lon)) sensor.lon = reading.lon;
+            sensor.tds = reading.tds;
+            if (Number.isFinite(reading.temp)) sensor.temperature = reading.temp;
+            sensor.riskLevel = this.inferRiskFromTds(reading.tds);
+            sensor.timestamp = nowTs;
+            sensor.dataPoints = Array.isArray(sensor.dataPoints) ? sensor.dataPoints : [];
+            sensor.dataPoints.push({ timestamp: nowTs, tds: reading.tds });
+            if (sensor.dataPoints.length > 120) {
+                sensor.dataPoints = sensor.dataPoints.slice(-120);
+            }
+        }
+
+        if (this.mapOpen && window.mapRenderer && rerenderMap) {
+            window.mapRenderer.renderSensors(this.sensors);
+        }
     }
 
     getLatestBLELocalReading() {
@@ -1288,7 +1356,8 @@ class App {
     generateTimeSeriesData(days) {
         const data = [];
         for (let i = 0; i < days; i++) {
-            const baseValue = this.sensors.reduce((sum, s) => sum + s.tds, 0) / this.sensors.length;
+            const sensorCount = this.sensors.length || 1;
+            const baseValue = this.sensors.reduce((sum, s) => sum + (Number(s.tds) || 0), 0) / sensorCount;
             const variation = (Math.random() - 0.5) * 100;
             data.push(Math.round(baseValue + variation));
         }
@@ -1303,6 +1372,7 @@ class App {
 
     getTopSensorNames(count) {
         return this.sensors
+            .slice()
             .sort((a, b) => b.tds - a.tds)
             .slice(0, count)
             .map(s => s.name.substring(0, 10));
@@ -1310,6 +1380,7 @@ class App {
 
     getTopSensorValues(count) {
         return this.sensors
+            .slice()
             .sort((a, b) => b.tds - a.tds)
             .slice(0, count)
             .map(s => s.tds);
