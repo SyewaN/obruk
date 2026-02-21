@@ -27,7 +27,7 @@ window.BLE_SYNC_LOCAL_KEY = STORAGE_KEY;
 window.BLE_SYNC_API_HEADERS = API_KEY ? { 'x-api-key': API_KEY } : {};
 
 function sendToAPI(data) {
-    const payload = Array.isArray(data) ? data : [data];
+    const payload = data;
     const endpoints = [INGEST_ENDPOINT, `${API_BASE}/sensor`];
     const authVariants = API_KEY
         ? [
