@@ -27,23 +27,53 @@ window.BLE_SYNC_LOCAL_KEY = STORAGE_KEY;
 window.BLE_SYNC_API_HEADERS = API_KEY ? { 'x-api-key': API_KEY } : {};
 
 function sendToAPI(data) {
-    const headers = { "Content-Type": "application/json" };
-    if (API_KEY) headers["x-api-key"] = API_KEY;
+    const payload = Array.isArray(data) ? data : [data];
+    const endpoints = [INGEST_ENDPOINT, `${API_BASE}/sensor`];
+    const authVariants = API_KEY
+        ? [
+            { "Content-Type": "application/json", "x-api-key": API_KEY },
+            { "Content-Type": "application/json" }
+        ]
+        : [{ "Content-Type": "application/json" }];
 
-    return fetch("https://syewan.ynh.fr/obruk-api/data", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(data)
-    })
-        .then(res => res.json())
-        .then(res => {
-            console.log("API OK:", res);
-            return res;
-        })
-        .catch(err => {
-            console.error("API ERROR:", err);
-            throw err;
+    console.log("POST atiliyor mu?", payload);
+
+    const tryPost = async (endpoint, headers) => {
+        const res = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            mode: "cors",
+            body: JSON.stringify(payload)
         });
+        const raw = await res.text();
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status} ${res.statusText} @ ${endpoint} - ${raw || 'empty response'}`);
+        }
+        try {
+            return raw ? JSON.parse(raw) : { ok: true };
+        } catch (_) {
+            return { ok: true, raw };
+        }
+    };
+
+    return (async () => {
+        const errors = [];
+        for (const endpoint of endpoints) {
+            for (const headers of authVariants) {
+                try {
+                    console.log("POST endpoint:", endpoint, "headers:", Object.keys(headers).join(","));
+                    const response = await tryPost(endpoint, headers);
+                    console.log("API OK:", response);
+                    return response;
+                } catch (err) {
+                    errors.push(String(err?.message || err));
+                }
+            }
+        }
+        const finalError = new Error(`Tum endpoint denemeleri basarisiz: ${errors.join(" | ")}`);
+        console.error("API ERROR:", finalError);
+        throw finalError;
+    })();
 }
 
 class App {
@@ -312,10 +342,13 @@ class App {
             this.updateDataStatus('Gönderilecek veri yok');
             return;
         }
-        const payload = queue.map((row) => this.toApiPayload(row));
 
         try {
-            await sendToAPI(payload);
+            // Backend genelde tek ölçüm objesi beklediği için sırayla gönder.
+            for (const row of queue) {
+                const payload = this.toApiPayload(row);
+                await sendToAPI(payload);
+            }
         } catch (err) {
             throw new Error(`Ingest fetch hatasi: ${this.getFetchErrorMessage(err)}`);
         }

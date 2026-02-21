@@ -126,7 +126,6 @@
       salinity: Number.isFinite(row?.tds) ? row.tds : null,
       temp: Number.isFinite(row?.temp) ? row.temp : null,
       timestamp: row?.timestamp || new Date().toISOString(),
-      // geriye uyumluluk
       moisture: Number.isFinite(row?.moisture) ? row.moisture : null,
       tds: Number.isFinite(row?.tds) ? row.tds : null
     }));
@@ -138,24 +137,28 @@
     }
 
     emit(onStatus, 'Sunucuya gönderiliyor...');
-    let res;
-    try {
-      res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...state.config.headers },
-        body: JSON.stringify(payload)
-      });
-    } catch (err) {
-      emit(onStatus, 'Sunucuya erisilemiyor (network/CORS)');
-      throw err;
-    }
+    let sent = 0;
+    for (const row of payload) {
+      let res;
+      try {
+        res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...state.config.headers },
+          body: JSON.stringify(row)
+        });
+      } catch (err) {
+        emit(onStatus, 'Sunucuya erisilemiyor (network/CORS)');
+        throw err;
+      }
 
-    if (!res.ok) {
-      throw new Error('Sunucuya gönderim başarısız');
+      if (!res.ok) {
+        throw new Error(`Sunucuya gönderim başarısız: ${res.status}`);
+      }
+      sent += 1;
     }
 
     writeLocal([]);
-    return { sent: queue.length, remaining: 0 };
+    return { sent, remaining: 0 };
   }
 
   const BLESync = {
