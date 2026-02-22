@@ -1144,18 +1144,24 @@ class App {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
                 localStorage.setItem(ESP_LOCATION_KEY, JSON.stringify({ lat, lon, updatedAt: new Date().toISOString() }));
+                const existing = this.sensors.find((s) => s.id === ESP_SENSOR_ID);
                 this.upsertSensorFromReading({
                     sensorId: ESP_SENSOR_ID,
                     sensorName: ESP_SENSOR_NAME,
                     lat,
                     lon,
-                    tds: Number.isFinite(this.latestReading?.tds) ? this.latestReading.tds : 0,
+                    tds: Number.isFinite(this.latestReading?.tds) ? this.latestReading.tds : (Number(existing?.tds) || 0),
                     moisture: Number.isFinite(this.latestReading?.moisture) ? this.latestReading.moisture : 0,
-                    temp: Number.isFinite(this.latestReading?.temp) ? this.latestReading.temp : 0,
+                    temp: Number.isFinite(this.latestReading?.temp) ? this.latestReading.temp : (Number(existing?.temperature) || 0),
                     timestamp: this.latestReading?.timestamp || new Date().toISOString()
                 });
+                this.selectedSensor = ESP_SENSOR_ID;
                 if (this.mapOpen && window.mapRenderer) {
                     window.mapRenderer.renderSensors(this.sensors);
+                    window.mapRenderer.highlightSensor(ESP_SENSOR_ID);
+                    if (window.mapRenderer.map) {
+                        window.mapRenderer.map.setView([lat, lon], Math.max(window.mapRenderer.map.getZoom() || 7, 13));
+                    }
                 }
                 this.render();
                 this.updateDataStatus('ESP konumu kaydedildi');
