@@ -117,7 +117,7 @@ body.dark-theme .navbar {
 .navbar-logo-section {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: 0.55rem;
     cursor: pointer;
 }
 
@@ -140,10 +140,11 @@ body.dark-theme .navbar {
 }
 
 .navbar-title {
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: 1.02rem;
+    font-weight: 700;
     color: var(--color-text-primary);
-    letter-spacing: -0.3px;
+    letter-spacing: 0.2px;
+    opacity: 0.92;
 }
 
 .navbar-center {
@@ -775,7 +776,8 @@ body[data-mode="farmer"] .time-filter[data-mode="academy"] {
 .map-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: var(--spacing-sm);
     padding: var(--spacing-lg) var(--spacing-xl);
     background-color: var(--color-bg-secondary);
     border-bottom: 1px solid var(--color-bg-tertiary);
@@ -786,6 +788,11 @@ body[data-mode="farmer"] .time-filter[data-mode="academy"] {
     font-size: 1.75rem;
     font-weight: 700;
     color: var(--color-text-dark);
+    margin-right: auto;
+}
+
+#setEspLocationBtn {
+    white-space: nowrap;
 }
 
 .map-container {

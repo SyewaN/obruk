@@ -14,6 +14,9 @@ const INGEST_ENDPOINT = `${API_BASE}/data`;
 const LATEST_ENDPOINT = `${API_BASE}/data/latest.json`;
 const HISTORY_ENDPOINT = `${API_BASE}/data/history.json`;
 const STORAGE_KEY = 'hydrosense-ble-segments';
+const ESP_LOCATION_KEY = 'hydrosense-esp-location';
+const ESP_SENSOR_ID = 'esp-t1';
+const ESP_SENSOR_NAME = 'esp-t1';
 const BLE_DEVICE_NAME = 'TarlaSensor';
 // ESP ile birebir eşleşen UUID'ler
 const BLE_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
@@ -134,8 +137,10 @@ class App {
         
         // Load data
         await dataLoader.loadFromGeoJSON('data/sensors.geojson');
-        this.sensors = dataLoader.getAllSensors();
-        console.log(`✓ Loaded ${this.sensors.length} sensors`);
+        // Demo sensor listesini kapat: üretimde tek gerçek ESP sensörü kullanılacak.
+        this.sensors = [];
+        this.restoreEspSensorFromSavedLocation();
+        console.log(`✓ Loaded ${this.sensors.length} active sensors`);
         
         // Setup all controls
         this.setupThemeToggle();
@@ -163,16 +168,10 @@ class App {
         this.loadLatestFromLocal();
         this.refreshLatestFromApi();
         this.refreshHistoryFromApi();
-        // API'den canlı veri akışı (3 sn)
-        setInterval(() => {
-            this.refreshLatestFromApi();
-        }, 3000);
-
-        // Local queue -> AWS/PM2 ingest + history refresh
+        // Local queue -> AWS/PM2 ingest (hafif periyot)
         setInterval(() => {
             this.autoSyncWhenOnline();
-            this.refreshHistoryFromApi();
-        }, 30000);
+        }, 60000);
         
         // Update timestamp
         this.updateTimestamp();
@@ -303,8 +302,8 @@ class App {
             salinity: Number.isFinite(data?.tds) ? data.tds : null,
             temp: Number.isFinite(data?.temp) ? data.temp : null,
             timestamp: data?.timestamp || new Date().toISOString(),
-            sensor_id: data?.sensorId || data?.sensor_id || 'ESP-001',
-            sensor_name: data?.sensorName || data?.sensor_name || 'TarlaSensor',
+            sensor_id: data?.sensorId || data?.sensor_id || ESP_SENSOR_ID,
+            sensor_name: data?.sensorName || data?.sensor_name || ESP_SENSOR_NAME,
             lat: Number.isFinite(Number(data?.lat ?? data?.latitude)) ? Number(data?.lat ?? data?.latitude) : null,
             lon: Number.isFinite(Number(data?.lon ?? data?.lng ?? data?.longitude)) ? Number(data?.lon ?? data?.lng ?? data?.longitude) : null,
             // geriye uyumluluk
@@ -509,8 +508,8 @@ class App {
             moisture: safeMoisture,
             temp: safeTemp,
             timestamp,
-            sensorId: data.sensor_id || data.sensorId || 'ESP-001',
-            sensorName: data.sensor_name || data.sensorName || 'TarlaSensor',
+            sensorId: data.sensor_id || data.sensorId || ESP_SENSOR_ID,
+            sensorName: data.sensor_name || data.sensorName || ESP_SENSOR_NAME,
             lat: safeLat,
             lon: safeLon
         };
@@ -525,8 +524,8 @@ class App {
 
     upsertSensorFromReading(reading, rerenderMap = true) {
         if (!reading || !Number.isFinite(reading.tds)) return;
-        const sensorId = reading.sensorId || reading.sensor_id || 'ESP-001';
-        const sensorName = reading.sensorName || reading.sensor_name || 'TarlaSensor';
+        const sensorId = reading.sensorId || reading.sensor_id || ESP_SENSOR_ID;
+        const sensorName = reading.sensorName || reading.sensor_name || ESP_SENSOR_NAME;
         const existingIndex = this.sensors.findIndex((s) => s.id === sensorId);
         const nowTs = reading.timestamp || new Date().toISOString();
 
@@ -615,6 +614,8 @@ class App {
                         this.bleConnected = true;
                         this.updateConnectionStatus('Cihaz bağlı');
                         this.updateDataStatus('✅ Gönderildi!');
+                        this.refreshLatestFromApi();
+                        this.refreshHistoryFromApi();
                     } else {
                         await this.connectBluetoothDevice();
                         await this.startBluetoothNotifications();
@@ -662,7 +663,6 @@ class App {
 
         window.addEventListener('online', () => {
             this.autoSyncWhenOnline();
-            this.refreshLatestFromApi();
         });
     }
 
@@ -798,7 +798,7 @@ class App {
     buildTranslations() {
         return {
             tr: {
-                'mode.farmer': 'Son Kullanıcı / Farmer',
+                'mode.farmer': 'Son Kullanıcı / Çiftçi',
                 'mode.academy': 'Öğrenci / Akademi',
                 'dashboard.farmerTitle': 'Çiftçi Paneli',
                 'dashboard.academyTitle': 'Akademi Paneli',
@@ -847,7 +847,7 @@ class App {
                 'settings.title': 'Ayarlar',
                 'settings.language': 'Dil',
                 'settings.links': 'Bağlantılar',
-                'settings.github': 'GitHub Deposu',
+                'settings.github': 'GitHub Reposu',
                 'settings.about': 'Hakkında',
                 'settings.aboutText1': 'Projemiz farklı bölgelerdeki esp aygıtları ile aldıkları veriler arasında korelasyon tahmini yaparak obruk ve su tuzlanma riskini tahmin eder.',
                 'settings.aboutText2': 'Proje kesinlik iddia etmez, deneyseldir.',
@@ -1109,10 +1109,69 @@ class App {
         });
     }
 
+    restoreEspSensorFromSavedLocation() {
+        try {
+            const raw = localStorage.getItem(ESP_LOCATION_KEY);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            const lat = Number(saved?.lat);
+            const lon = Number(saved?.lon);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+            this.upsertSensorFromReading({
+                sensorId: ESP_SENSOR_ID,
+                sensorName: ESP_SENSOR_NAME,
+                lat,
+                lon,
+                tds: Number.isFinite(this.latestReading?.tds) ? this.latestReading.tds : 0,
+                moisture: Number.isFinite(this.latestReading?.moisture) ? this.latestReading.moisture : 0,
+                temp: Number.isFinite(this.latestReading?.temp) ? this.latestReading.temp : 0,
+                timestamp: this.latestReading?.timestamp || new Date().toISOString()
+            });
+        } catch (err) {
+            console.error('ESP location restore failed:', err);
+        }
+    }
+
+    requestAndSaveEspLocation() {
+        if (!navigator.geolocation) {
+            this.updateDataStatus('Konum servisleri desteklenmiyor');
+            return;
+        }
+        this.updateDataStatus('Konum alınıyor...');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                localStorage.setItem(ESP_LOCATION_KEY, JSON.stringify({ lat, lon, updatedAt: new Date().toISOString() }));
+                this.upsertSensorFromReading({
+                    sensorId: ESP_SENSOR_ID,
+                    sensorName: ESP_SENSOR_NAME,
+                    lat,
+                    lon,
+                    tds: Number.isFinite(this.latestReading?.tds) ? this.latestReading.tds : 0,
+                    moisture: Number.isFinite(this.latestReading?.moisture) ? this.latestReading.moisture : 0,
+                    temp: Number.isFinite(this.latestReading?.temp) ? this.latestReading.temp : 0,
+                    timestamp: this.latestReading?.timestamp || new Date().toISOString()
+                });
+                if (this.mapOpen && window.mapRenderer) {
+                    window.mapRenderer.renderSensors(this.sensors);
+                }
+                this.render();
+                this.updateDataStatus('ESP konumu kaydedildi');
+            },
+            (err) => {
+                this.updateDataStatus(`Konum alınamadı: ${err.message || 'izin hatası'}`);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
+
     // ====== MAP TOGGLE ======
     setupMapToggle() {
         const mapToggleBtn = document.getElementById('mapToggle');
         const mapCloseBtn = document.getElementById('mapClose');
+        const setEspLocationBtn = document.getElementById('setEspLocationBtn');
         const mapSection = document.querySelector('.map-section');
         const dashSection = document.querySelector('.dashboard-section');
         const mapSettings = document.querySelector('.map-settings');
@@ -1144,6 +1203,12 @@ class App {
         mapCloseBtn.addEventListener('click', () => {
             mapToggleBtn.click();
         });
+
+        if (setEspLocationBtn) {
+            setEspLocationBtn.addEventListener('click', () => {
+                this.requestAndSaveEspLocation();
+            });
+        }
         
         // Map settings listeners
         document.getElementById('sensorMarkersToggle').addEventListener('change', (e) => {
@@ -1226,10 +1291,10 @@ class App {
         this.charts.tds = new Chart(tdsCtx, {
             type: 'line',
             data: {
-                labels: this.generateDateLabels(7),
+                labels: [],
                 datasets: [{
                     label: 'TDS Seviyesi (ppm)',
-                    data: this.generateTimeSeriesData(7),
+                    data: [],
                     borderColor: chartColors.line,
                     backgroundColor: 'rgba(136, 192, 208, 0.05)',
                     borderWidth: 2,
@@ -1325,20 +1390,26 @@ class App {
 
     updateCharts() {
         if (this.charts.tds) {
-            if (this.serverHistory.length) {
-                const recent = this.serverHistory.slice(-14);
-                this.charts.tds.data.labels = recent.map((row) => {
-                    const d = new Date(row.timestamp);
-                    return Number.isNaN(d.getTime())
-                        ? '-'
-                        : d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-                });
-                this.charts.tds.data.datasets[0].data = recent.map((row) => row.tds);
-            } else {
-                this.charts.tds.data.labels = this.generateDateLabels(7);
-                this.charts.tds.data.datasets[0].data = this.generateTimeSeriesData(7);
-            }
+            const recent = this.serverHistory.slice(-14);
+            this.charts.tds.data.labels = recent.map((row) => {
+                const d = new Date(row.timestamp);
+                return Number.isNaN(d.getTime())
+                    ? '-'
+                    : d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            });
+            this.charts.tds.data.datasets[0].data = recent.map((row) => row.tds);
             this.charts.tds.update();
+        }
+
+        if (this.charts.risk) {
+            this.charts.risk.data.datasets[0].data = this.calculateRiskDistribution();
+            this.charts.risk.update();
+        }
+
+        if (this.charts.comparison) {
+            this.charts.comparison.data.labels = this.getTopSensorNames(5);
+            this.charts.comparison.data.datasets[0].data = this.getTopSensorValues(5);
+            this.charts.comparison.update();
         }
     }
 
@@ -1351,17 +1422,6 @@ class App {
             labels.push(date.toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' }));
         }
         return labels;
-    }
-
-    generateTimeSeriesData(days) {
-        const data = [];
-        for (let i = 0; i < days; i++) {
-            const sensorCount = this.sensors.length || 1;
-            const baseValue = this.sensors.reduce((sum, s) => sum + (Number(s.tds) || 0), 0) / sensorCount;
-            const variation = (Math.random() - 0.5) * 100;
-            data.push(Math.round(baseValue + variation));
-        }
-        return data;
     }
 
     calculateRiskDistribution() {
@@ -1554,31 +1614,47 @@ class App {
     getCropPhData() {
         const crops = ['Buğday', 'Arpa', 'Mısır', 'Nohut', 'Şekerpancarı'];
         const avgTds = this.getAverageTds();
-        const baseSalinity = Math.max(600, Math.round(avgTds * 0.85));
+        const latest = this.serverHistory.slice(-5);
+        const baseSalinity = latest.length
+            ? Math.round(latest.reduce((sum, row) => sum + (Number(row.tds) || 0), 0) / latest.length)
+            : Math.max(0, Math.round(avgTds));
+        const avgMoisture = latest.length
+            ? latest.reduce((sum, row) => sum + (Number(row.moisture) || 0), 0) / latest.length
+            : 50;
+        const basePh = Math.max(5.5, Math.min(8.2, 7 - ((avgMoisture - 50) / 100)));
         return {
             labels: crops,
-            salinity: crops.map((_, i) => baseSalinity + i * 120),
-            ph: crops.map((_, i) => 6.2 + i * 0.3)
+            salinity: crops.map(() => baseSalinity),
+            ph: crops.map(() => Number(basePh.toFixed(2)))
         };
     }
 
     getYieldTrendData() {
-        const labels = [];
-        const values = [];
-        const avgTds = this.getAverageTds();
-        let base = 100 - Math.min(35, Math.round((avgTds - 1200) / 40));
-        for (let i = 7; i >= 0; i--) {
-            labels.push(`Hafta ${8 - i}`);
-            const swing = (Math.random() - 0.5) * 6;
-            values.push(Math.max(55, Math.round(base - i * 1.2 + swing)));
+        const source = this.serverHistory.slice(-8);
+        if (!source.length) {
+            return { labels: [], values: [] };
         }
+        const labels = source.map((row, i) => {
+            const d = new Date(row.timestamp);
+            if (Number.isNaN(d.getTime())) return `Veri ${i + 1}`;
+            return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+        });
+        const values = source.map((row) => {
+            const tds = Number(row.tds) || 0;
+            return Math.max(0, Math.min(100, Math.round(100 - (tds / 50))));
+        });
         return { labels, values };
     }
 
     getMoistureValue() {
-        const avgTds = this.getAverageTds();
-        const moisture = Math.round(70 - Math.max(0, (avgTds - 1200) / 50));
-        return Math.max(25, Math.min(85, moisture));
+        const source = this.serverHistory.slice(-10);
+        if (!source.length) return 0;
+        const withMoisture = source
+            .map((row) => Number(row.moisture))
+            .filter((val) => Number.isFinite(val));
+        if (!withMoisture.length) return 0;
+        const avg = withMoisture.reduce((sum, val) => sum + val, 0) / withMoisture.length;
+        return Math.max(0, Math.min(100, Math.round(avg)));
     }
 
     // ====== STATS UPDATE ======

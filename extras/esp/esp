@@ -1,0 +1,66 @@
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
+#define SERVICE_UUID        "12345678-1234-1234-1234-123456789abc"
+#define CHARACTERISTIC_UUID "87654321-4321-4321-4321-cba987654321"
+
+BLECharacteristic *pCharacteristic;
+bool deviceConnected = false;
+
+class MyCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* pServer) { deviceConnected = true; }
+  void onDisconnect(BLEServer* pServer) {
+    deviceConnected = false;
+    BLEDevice::startAdvertising();
+  }
+};
+
+// ========================================
+// SENSÖR VERİSİ - İleride burası değişecek
+// Şu an sahte veri üretiyor
+// ========================================
+String getSensorData() {
+  int tds      = random(700, 900);      // → gerçek TDS sensörü
+  int moisture = random(300, 400);      // → gerçek nem sensörü
+  float temp   = random(2000, 3000) / 100.0; // → gerçek sıcaklık sensörü
+
+  return "{\"tds\":"      + String(tds) +
+         ",\"moisture\":" + String(moisture) +
+         ",\"temp\":"     + String(temp, 2) + "}";
+}
+
+void setup() {
+  BLEDevice::init("TarlaSensor");
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyCallbacks());
+
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pCharacteristic = pService->createCharacteristic(
+    CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
+  );
+  pCharacteristic->addDescriptor(new BLE2902());
+  pService->start();
+
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
+}
+
+void loop() {
+  // Her 5 saniyede veriyi güncelle
+  // Web Bluetooth READ yaptığında hep güncel veri gelir
+  String data = getSensorData();
+  pCharacteristic->setValue(data.c_str());
+
+  if (deviceConnected) {
+    pCharacteristic->notify();
+  }
+
+  delay(5000);
+}

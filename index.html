@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroSense Monitor - Academic Dashboard</title>
+    <title>Alşimist</title>
     <meta name="theme-color" content="#ECEEF4">
+    <link rel="icon" type="image/png" href="favicon.png">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -22,7 +23,7 @@
                         <i class="fas fa-bars"></i>
                     </button>
                     <img src="icon.png" alt="Logo" class="navbar-logo">
-                    <span class="navbar-title">OBRUKÇU EŞEK</span>
+                    <span class="navbar-title">Alşimist</span>
                 </div>
             </div>
 
@@ -31,7 +32,7 @@
                 <div class="mode-toggle" role="tablist" aria-label="Görünüm modu">
                     <button class="mode-toggle-btn" data-mode="farmer" role="tab" aria-selected="false">
                         <i class="fas fa-tractor"></i>
-                        <span data-i18n="mode.farmer">Son Kullanıcı / Farmer</span>
+                        <span data-i18n="mode.farmer">Son Kullanıcı / Çiftçi</span>
                     </button>
                     <button class="mode-toggle-btn active" data-mode="academy" role="tab" aria-selected="true">
                         <i class="fas fa-graduation-cap"></i>
@@ -48,10 +49,6 @@
                 <button id="readDeviceBtn" class="navbar-btn" title="Cihazdan Oku ve Gönder">
                     <i class="fab fa-bluetooth-b"></i>
                     <span class="navbar-btn-label">Verileri Eşitle</span>
-                </button>
-                <button id="sendServerBtn" class="navbar-btn" title="Sunucuya Gönder">
-                    <i class="fas fa-upload"></i>
-                    <span class="navbar-btn-label">Sunucuya Gönder</span>
                 </button>
                 <button id="settingsBtn" class="navbar-btn" title="Ayarlar">
                     <i class="fas fa-sliders-h"></i>
@@ -74,7 +71,7 @@
                 <div class="mode-toggle" role="tablist" aria-label="Görünüm modu">
                     <button class="mode-toggle-btn" data-mode="farmer" role="tab" aria-selected="false">
                         <i class="fas fa-tractor"></i>
-                        <span data-i18n="mode.farmer">Son Kullanıcı / Farmer</span>
+                        <span data-i18n="mode.farmer">Son Kullanıcı / Çiftçi</span>
                     </button>
                     <button class="mode-toggle-btn active" data-mode="academy" role="tab" aria-selected="true">
                         <i class="fas fa-graduation-cap"></i>
@@ -337,6 +334,10 @@
             <section class="map-section" style="display: none;">
                 <div class="map-header">
                     <h2 data-i18n="map.title">Harita Görünümü</h2>
+                    <button id="setEspLocationBtn" class="nav-btn">
+                        <i class="fas fa-location-crosshairs"></i>
+                        <span>ESP Konumunu Sapta</span>
+                    </button>
                     <button id="mapClose" class="btn-close" title="Kapat">
                         <i class="fas fa-times"></i>
                     </button>
@@ -370,7 +371,7 @@
                         <div class="settings-control">
                             <a href="https://github.com/SyewaN/hydrosense-map" target="_blank" class="settings-link">
                                 <i class="fab fa-github"></i>
-                                <span data-i18n="settings.github">GitHub Deposu</span>
+                                <span data-i18n="settings.github">GitHub Reposu</span>
                             </a>
                         </div>
                     </div>
