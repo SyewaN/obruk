@@ -1123,8 +1123,18 @@ class App {
         }
     }
 
+    safeSaveEspLocation(lat, lon, source = 'gps') {
+        try {
+            localStorage.setItem(ESP_LOCATION_KEY, JSON.stringify({ lat, lon, source, updatedAt: new Date().toISOString() }));
+            return true;
+        } catch (err) {
+            console.error('ESP location local save failed:', err);
+            return false;
+        }
+    }
+
     applyEspLocation(lat, lon, source = 'gps') {
-        localStorage.setItem(ESP_LOCATION_KEY, JSON.stringify({ lat, lon, source, updatedAt: new Date().toISOString() }));
+        const persisted = this.safeSaveEspLocation(lat, lon, source);
         const existing = this.sensors.find((s) => s.id === ESP_SENSOR_ID);
         this.upsertSensorFromReading({
             sensorId: ESP_SENSOR_ID,
@@ -1139,6 +1149,9 @@ class App {
         this.selectedSensor = ESP_SENSOR_ID;
         this.render();
         this.focusMapOnEsp(lat, lon);
+        if (!persisted) {
+            this.updateDataStatus('Konum uygulandı (local kayıt başarısız)');
+        }
     }
 
     focusMapOnEsp(lat, lon) {
