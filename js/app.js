@@ -1117,19 +1117,39 @@ class App {
             const lat = Number(saved?.lat);
             const lon = Number(saved?.lon);
             if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-
-            this.upsertSensorFromReading({
-                sensorId: ESP_SENSOR_ID,
-                sensorName: ESP_SENSOR_NAME,
-                lat,
-                lon,
-                tds: Number.isFinite(this.latestReading?.tds) ? this.latestReading.tds : 0,
-                moisture: Number.isFinite(this.latestReading?.moisture) ? this.latestReading.moisture : 0,
-                temp: Number.isFinite(this.latestReading?.temp) ? this.latestReading.temp : 0,
-                timestamp: this.latestReading?.timestamp || new Date().toISOString()
-            });
+            this.applyEspLocation(lat, lon, 'saved');
         } catch (err) {
             console.error('ESP location restore failed:', err);
+        }
+    }
+
+    applyEspLocation(lat, lon, source = 'gps') {
+        localStorage.setItem(ESP_LOCATION_KEY, JSON.stringify({ lat, lon, source, updatedAt: new Date().toISOString() }));
+        const existing = this.sensors.find((s) => s.id === ESP_SENSOR_ID);
+        this.upsertSensorFromReading({
+            sensorId: ESP_SENSOR_ID,
+            sensorName: ESP_SENSOR_NAME,
+            lat,
+            lon,
+            tds: Number.isFinite(this.latestReading?.tds) ? this.latestReading.tds : (Number(existing?.tds) || 0),
+            moisture: Number.isFinite(this.latestReading?.moisture) ? this.latestReading.moisture : 0,
+            temp: Number.isFinite(this.latestReading?.temp) ? this.latestReading.temp : (Number(existing?.temperature) || 0),
+            timestamp: this.latestReading?.timestamp || new Date().toISOString()
+        });
+        this.selectedSensor = ESP_SENSOR_ID;
+        this.render();
+        this.focusMapOnEsp(lat, lon);
+    }
+
+    focusMapOnEsp(lat, lon) {
+        if (!this.mapOpen || !window.mapRenderer) return;
+        window.mapRenderer.renderSensors(this.sensors);
+        window.mapRenderer.highlightSensor(ESP_SENSOR_ID);
+        if (window.mapRenderer.map) {
+            setTimeout(() => {
+                window.mapRenderer.map.invalidateSize();
+                window.mapRenderer.map.flyTo([lat, lon], 16, { animate: true, duration: 0.8 });
+            }, 60);
         }
     }
 
@@ -1138,38 +1158,53 @@ class App {
             this.updateDataStatus('Konum servisleri desteklenmiyor');
             return;
         }
+        if (!window.isSecureContext) {
+            this.updateDataStatus('Konum için HTTPS gerekli');
+            return;
+        }
         this.updateDataStatus('Konum alınıyor...');
+        let bestFix = null;
+        const maybeApply = (coords) => {
+            if (!coords) return;
+            if (!bestFix || (Number.isFinite(coords.accuracy) && coords.accuracy < bestFix.accuracy)) {
+                bestFix = {
+                    lat: coords.latitude,
+                    lon: coords.longitude,
+                    accuracy: Number.isFinite(coords.accuracy) ? coords.accuracy : 9999
+                };
+                this.applyEspLocation(bestFix.lat, bestFix.lon, 'gps');
+                this.updateDataStatus(`ESP konumu kaydedildi (±${Math.round(bestFix.accuracy)}m)`);
+            }
+        };
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                localStorage.setItem(ESP_LOCATION_KEY, JSON.stringify({ lat, lon, updatedAt: new Date().toISOString() }));
-                const existing = this.sensors.find((s) => s.id === ESP_SENSOR_ID);
-                this.upsertSensorFromReading({
-                    sensorId: ESP_SENSOR_ID,
-                    sensorName: ESP_SENSOR_NAME,
-                    lat,
-                    lon,
-                    tds: Number.isFinite(this.latestReading?.tds) ? this.latestReading.tds : (Number(existing?.tds) || 0),
-                    moisture: Number.isFinite(this.latestReading?.moisture) ? this.latestReading.moisture : 0,
-                    temp: Number.isFinite(this.latestReading?.temp) ? this.latestReading.temp : (Number(existing?.temperature) || 0),
-                    timestamp: this.latestReading?.timestamp || new Date().toISOString()
-                });
-                this.selectedSensor = ESP_SENSOR_ID;
-                if (this.mapOpen && window.mapRenderer) {
-                    window.mapRenderer.renderSensors(this.sensors);
-                    window.mapRenderer.highlightSensor(ESP_SENSOR_ID);
-                    if (window.mapRenderer.map) {
-                        window.mapRenderer.map.setView([lat, lon], Math.max(window.mapRenderer.map.getZoom() || 7, 13));
-                    }
-                }
-                this.render();
-                this.updateDataStatus('ESP konumu kaydedildi');
+                maybeApply(position.coords);
+
+                // Mobilde ilk fix kaba olabilir; 12 sn kadar daha iyi fix topla.
+                let watchId = null;
+                const stopTimer = setTimeout(() => {
+                    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                }, 12000);
+                watchId = navigator.geolocation.watchPosition(
+                    (watchPos) => {
+                        maybeApply(watchPos.coords);
+                        if (bestFix && bestFix.accuracy <= 25) {
+                            clearTimeout(stopTimer);
+                            navigator.geolocation.clearWatch(watchId);
+                        }
+                    },
+                    () => {
+                        clearTimeout(stopTimer);
+                        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                    },
+                    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+                );
             },
             (err) => {
                 this.updateDataStatus(`Konum alınamadı: ${err.message || 'izin hatası'}`);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
         );
     }
 
